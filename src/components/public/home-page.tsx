@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   ArrowRight,
-  Camera,
   CheckCircle2,
   Code2,
   Crown,
@@ -22,11 +21,18 @@ import {
   XCircle,
   Zap,
 } from "lucide-react"
-
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+
+import PublicNavbar from "@/components/layout/public-navbar"
+import PublicFooter from "@/components/layout/public-footer"
+
+import Reveal from "@/components/animations/reveal"
+// import AnimatedCounter from "@/components/animations/animated-counter"
+import FloatingGlow from "@/components/animations/floating-glow"
 
 type Technology = {
   id: string
@@ -346,18 +352,22 @@ export default function HomePage() {
     }
   }
 
-  useEffect(() => {
-    loadData()
-  }, [])
+    useEffect(() => {
+    queueMicrotask(() => {
+        void loadData()
+    })
+    }, [])
 
-  useEffect(() => {
-    const savedToken = localStorage.getItem("youdev_user_token")
+    useEffect(() => {
+    queueMicrotask(() => {
+        const savedToken = localStorage.getItem("youdev_user_token")
 
-    if (savedToken) {
-      setUserToken(savedToken)
-      loadUserVotes(savedToken)
-    }
-  }, [])
+        if (savedToken) {
+        setUserToken(savedToken)
+        void loadUserVotes(savedToken)
+        }
+    })
+    }, [])
 
   const filteredProjects = useMemo(() => {
     const q = search.toLowerCase().trim()
@@ -383,11 +393,18 @@ export default function HomePage() {
       <div className="grid-bg fixed inset-0 -z-20" />
       <div className="fixed inset-0 -z-30 bg-[#050712]" />
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_50%_0%,rgba(34,211,238,0.12),transparent_35%),radial-gradient(circle_at_100%_20%,rgba(124,58,237,0.12),transparent_35%)]" />
+      <div className="fixed inset-0 -z-10 overflow-hidden">
+        <FloatingGlow size="lg" position="center" className="top-[-120px]" />
+        <FloatingGlow size="md" position="right" className="top-[35%] bg-violet-500/10" />
+        <FloatingGlow size="sm" position="left" className="bottom-[10%] bg-blue-500/10" />
+      </div>
 
-      <Navbar
+      {/* <Navbar
         userToken={userToken}
         remainingVotesState={remainingVotesState}
-      />
+      /> */}
+
+      <PublicNavbar />
 
       <section className="mx-auto max-w-7xl px-4 pb-16 pt-10 sm:px-6 lg:px-8">
         <HeroSection
@@ -402,11 +419,13 @@ export default function HomePage() {
 
         <section className="mt-10 grid gap-6 lg:grid-cols-[1fr_380px]">
           <div className="space-y-6">
-            <FeedHeader
-              search={search}
-              setSearch={setSearch}
-              totalProjects={filteredProjects.length}
-            />
+            <Reveal y={18}>
+              <FeedHeader
+                search={search}
+                setSearch={setSearch}
+                totalProjects={filteredProjects.length}
+              />
+            </Reveal>
 
             {loading ? (
               <ProjectSkeletonGrid />
@@ -431,9 +450,13 @@ export default function HomePage() {
             )}
           </div>
 
-          <LeaderboardPanel loading={loading} leaderboard={leaderboard} />
+          <Reveal y={20} delay={0.12}>
+            <LeaderboardPanel loading={loading} leaderboard={leaderboard} />
+          </Reveal>
         </section>
       </section>
+
+      <PublicFooter />
 
       <VoteConfirmModal
         project={selectedProject}
@@ -453,69 +476,69 @@ export default function HomePage() {
   )
 }
 
-function Navbar({
-  userToken,
-  remainingVotesState,
-}: {
-  userToken: string | null
-  remainingVotesState: RemainingVotesState | null
-}) {
-  return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050712]/70 backdrop-blur-2xl">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-400/15 text-cyan-200 ring-1 ring-cyan-300/30">
-            <Code2 size={21} />
-          </div>
-          <div>
-            <div className="text-lg font-black tracking-tight text-white">
-              YOU<span className="text-cyan-300">·</span>DEV
-            </div>
-            <div className="text-xs text-slate-500">SUP2I Competition</div>
-          </div>
-        </div>
+// function Navbar({
+//   userToken,
+//   remainingVotesState,
+// }: {
+//   userToken: string | null
+//   remainingVotesState: RemainingVotesState | null
+// }) {
+//   return (
+//     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050712]/70 backdrop-blur-2xl">
+//       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+//         <div className="flex items-center gap-3">
+//           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-400/15 text-cyan-200 ring-1 ring-cyan-300/30">
+//             <Code2 size={21} />
+//           </div>
+//           <div>
+//             <div className="text-lg font-black tracking-tight text-white">
+//               YOU<span className="text-cyan-300">·</span>DEV
+//             </div>
+//             <div className="text-xs text-slate-500">SUP2I Competition</div>
+//           </div>
+//         </div>
 
-        <div className="hidden items-center gap-6 text-sm text-slate-300 md:flex">
-          <a className="transition hover:text-white" href="#">
-            Accueil
-          </a>
-          <a className="transition hover:text-white" href="#projects">
-            Projets
-          </a>
-          <a className="transition hover:text-white" href="#leaderboard">
-            Classement
-          </a>
-          <a className="transition hover:text-white" href="#">
-            À propos
-          </a>
-          <a className="transition hover:text-white" href="#">
-            Règlement
-          </a>
-          <a className="transition hover:text-white" href="#">
-            Contact
-          </a>
-        </div>
+//         <div className="hidden items-center gap-6 text-sm text-slate-300 md:flex">
+//           <a className="transition hover:text-white" href="#">
+//             Accueil
+//           </a>
+//           <a className="transition hover:text-white" href="#projects">
+//             Projets
+//           </a>
+//           <a className="transition hover:text-white" href="#leaderboard">
+//             Classement
+//           </a>
+//           <a className="transition hover:text-white" href="#">
+//             À propos
+//           </a>
+//           <a className="transition hover:text-white" href="#">
+//             Règlement
+//           </a>
+//           <a className="transition hover:text-white" href="#">
+//             Contact
+//           </a>
+//         </div>
 
-        <div className="flex items-center gap-3">
-          {remainingVotesState && (
-            <div className="hidden rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-xs text-slate-300 sm:block">
-              Votes restants{" "}
-              <span className="font-black text-cyan-200">
-                {remainingVotesState.remainingVotes}/
-                {remainingVotesState.maxVotesPerUser}
-              </span>
-            </div>
-          )}
+//         <div className="flex items-center gap-3">
+//           {remainingVotesState && (
+//             <div className="hidden rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-xs text-slate-300 sm:block">
+//               Votes restants{" "}
+//               <span className="font-black text-cyan-200">
+//                 {remainingVotesState.remainingVotes}/
+//                 {remainingVotesState.maxVotesPerUser}
+//               </span>
+//             </div>
+//           )}
 
-          <Button className="rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 font-bold text-white hover:opacity-90">
-            <Camera className="mr-2 h-4 w-4" />
-            {userToken ? "Connecté" : "Connexion"}
-          </Button>
-        </div>
-      </nav>
-    </header>
-  )
-}
+//           <Button className="rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 font-bold text-white hover:opacity-90">
+//             <Camera className="mr-2 h-4 w-4" />
+//             {userToken ? "Connecté" : "Connexion"}
+//           </Button>
+//         </div>
+//       </nav>
+//     </header>
+//   )
+// }
 
 function HeroSection({
   config,
@@ -592,10 +615,17 @@ function HeroSection({
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
+          whileHover={{ y: -4 }}
           transition={{ duration: 0.7, delay: 0.1 }}
           className="glass-card neon-border relative overflow-hidden rounded-[2rem] p-6"
         >
           <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/10 via-transparent to-violet-500/10" />
+          <motion.div
+            aria-hidden="true"
+            className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-cyan-300/70 to-transparent"
+            animate={{ x: ["-100%", "100%"] }}
+            transition={{ duration: 3.8, repeat: Infinity, ease: "linear" }}
+          />
 
           <div className="relative">
             <div className="mb-6 flex items-center justify-between">
@@ -660,13 +690,19 @@ function KpiCard({
   value: string
   label: string
 }) {
+  const safeValue = value && value.trim() !== "" ? value : "0"
+
   return (
     <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 transition duration-300 hover:border-cyan-300/30 hover:bg-white/[0.06]">
       <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200">
         {icon}
       </div>
-      <div className="text-3xl font-black text-white">{value}</div>
-      <div className="mt-1 text-sm text-slate-400">{label}</div>
+
+      <div className="min-h-[38px] font-mono text-3xl font-black leading-none tracking-tight text-white tabular-nums">
+        {safeValue}
+      </div>
+
+      <div className="mt-2 text-sm text-slate-400">{label}</div>
     </div>
   )
 }
@@ -776,16 +812,20 @@ function ProjectCard({
   return (
     <motion.div
       initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      whileHover={{ y: -6 }}
       transition={{ duration: 0.45, delay: index * 0.04 }}
     >
       <Card className="glass-card group h-full overflow-hidden rounded-3xl border-white/10 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/40">
         <div className="relative h-44 overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-violet-950">
           {project.thumbnailUrl ? (
-            <img
-              src={project.thumbnailUrl}
-              alt={project.projectName}
-              className="h-full w-full object-cover opacity-90 transition duration-500 group-hover:scale-105"
+            <Image
+                src={project.thumbnailUrl}
+                alt={project.projectName}
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                className="object-cover opacity-90 transition duration-500 group-hover:scale-105"
             />
           ) : (
             <div className="flex h-full items-center justify-center">

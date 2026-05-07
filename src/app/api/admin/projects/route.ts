@@ -29,7 +29,7 @@ export async function GET(request: Request) {
       where: {
         ...(editionId ? { editionId } : {}),
         ...(teamId ? { teamId } : {}),
-        ...(status ? { status: status as any } : {}),
+        ...(status ? { status: status as "DRAFT" | "PUBLISHED" | "ARCHIVED" } : {}),
         ...(search
           ? {
               OR: [
@@ -76,7 +76,7 @@ export async function GET(request: Request) {
     })
 
     return successResponse({ projects }, "Projets récupérés")
-  } catch (error) {
+  } catch (error: unknown) {
     return errorResponse(
       "Erreur lors de la récupération des projets",
       ERROR_CODES.INTERNAL_SERVER_ERROR,
@@ -194,7 +194,7 @@ export async function POST(request: Request) {
     })
 
     return successResponse({ project }, "Projet créé", 201)
-  } catch (error) {
+  } catch (error: unknown) {
     return errorResponse(
       "Erreur lors de la création du projet",
       ERROR_CODES.INTERNAL_SERVER_ERROR,

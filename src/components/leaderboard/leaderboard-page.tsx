@@ -16,7 +16,6 @@ import {
   Flame,
   Gauge,
   Grid3X3,
-  Layers3,
   List,
   Loader2,
   Medal,
@@ -29,13 +28,17 @@ import {
   Trophy,
   Users,
   XCircle,
-  Zap,
+  
 } from "lucide-react"
-
+import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import PublicNavbar from "@/components/layout/public-navbar"
+import PublicFooter from "@/components/layout/public-footer"
+// import FloatingGlow from "@/components/animations/floating-glow"
+import Reveal from "@/components/animations/reveal"
 
 type Technology = {
   id: string
@@ -90,7 +93,7 @@ export default function LeaderboardPage() {
   const [filterMode, setFilterMode] = useState<FilterMode>("all")
   const [sortMode, setSortMode] = useState<SortMode>("rank")
   const [viewMode, setViewMode] = useState<ViewMode>("cards")
-  const [autoRefresh, setAutoRefresh] = useState(true)
+  const [autoRefresh] = useState(true)
 
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -146,9 +149,11 @@ export default function LeaderboardPage() {
     }
   }
 
-  useEffect(() => {
-    loadData()
-  }, [])
+    useEffect(() => {
+    queueMicrotask(() => {
+        void loadData()
+    })
+    }, [])
 
   useEffect(() => {
     if (!autoRefresh) return
@@ -211,93 +216,115 @@ export default function LeaderboardPage() {
 
   return (
     <main className="min-h-screen overflow-hidden">
-      <Background />
+        <Background />
 
-      <LeaderboardNavbar
-        autoRefresh={autoRefresh}
-        refreshing={refreshing}
-        onToggleAutoRefresh={() => setAutoRefresh((current) => !current)}
-      />
+        {/* <LeaderboardNavbar
+            autoRefresh={autoRefresh}
+            refreshing={refreshing}
+            onToggleAutoRefresh={() => setAutoRefresh((current) => !current)}
+        /> */}
 
-      <section className="mx-auto max-w-7xl px-4 pb-20 pt-8 sm:px-6 lg:px-8">
-        <TopActions />
+        <PublicNavbar />
 
-        <LeaderboardHero
-          config={config}
-          totalProjects={leaderboard.length}
-          totalVotes={totalVotes}
-          totalViews={totalViews}
-          qualifiedProjects={qualifiedProjects}
-          averageVotes={averageVotes}
-          refreshing={refreshing}
-          lastUpdatedAt={lastUpdatedAt}
-          autoRefresh={autoRefresh}
-          onRefresh={() => loadData({ silent: true })}
-        />
+        <section className="mx-auto max-w-7xl px-4 pb-20 pt-8 sm:px-6 lg:px-8">
+            <TopActions />
 
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              className="glass-card neon-border mt-8 flex items-center gap-3 rounded-2xl p-5 text-sm font-medium text-red-200"
-            >
-              <XCircle className="h-5 w-5" />
-              {error}
-            </motion.div>
-          )}
-        </AnimatePresence>
+            <Reveal>
+                <LeaderboardHero
+                    config={config}
+                    totalProjects={leaderboard.length}
+                    totalVotes={totalVotes}
+                    totalViews={totalViews}
+                    qualifiedProjects={qualifiedProjects}
+                    averageVotes={averageVotes}
+                    refreshing={refreshing}
+                    lastUpdatedAt={lastUpdatedAt}
+                    autoRefresh={autoRefresh}
+                    onRefresh={() => loadData({ silent: true })}
+                />
+            </Reveal>
 
-        <section className="mt-10 grid gap-8 lg:grid-cols-[1fr_410px]">
-          <div className="space-y-8">
-            <PodiumSection podium={podium} />
+            <AnimatePresence>
+                {error && (
+                    <motion.div
+                    initial={{ opacity: 0, y: -12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -12 }}
+                    className="glass-card neon-border mt-8 flex items-center gap-3 rounded-2xl p-5 text-sm font-medium text-red-200"
+                    >
+                    <XCircle className="h-5 w-5" />
+                    {error}
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
-            <LeaderboardControls
-              search={search}
-              setSearch={setSearch}
-              filterMode={filterMode}
-              setFilterMode={setFilterMode}
-              sortMode={sortMode}
-              setSortMode={setSortMode}
-              viewMode={viewMode}
-              setViewMode={setViewMode}
-              totalDisplayed={filteredLeaderboard.length}
-              qualifiedCount={qualifiedCount}
-            />
+            <section className="mt-10 grid gap-8 lg:grid-cols-[1fr_410px]">
+                <div className="space-y-8">
+                    <Reveal delay={0.05}>
+                        <PodiumSection podium={podium} />
+                    </Reveal>
 
-            <LeaderboardContent
-              items={filteredLeaderboard}
-              qualifiedCount={qualifiedCount}
-              viewMode={viewMode}
-            />
-          </div>
+                    <Reveal delay={0.08}>
+                        <LeaderboardControls
+                        search={search}
+                        setSearch={setSearch}
+                        filterMode={filterMode}
+                        setFilterMode={setFilterMode}
+                        sortMode={sortMode}
+                        setSortMode={setSortMode}
+                        viewMode={viewMode}
+                        setViewMode={setViewMode}
+                        totalDisplayed={filteredLeaderboard.length}
+                        qualifiedCount={qualifiedCount}
+                        />
+                    </Reveal>
 
-          <aside className="space-y-6 lg:sticky lg:top-24 lg:h-fit">
-            <OfficialStatusCard
-              config={config}
-              refreshing={refreshing}
-              autoRefresh={autoRefresh}
-              lastUpdatedAt={lastUpdatedAt}
-            />
+                    <Reveal delay={0.1}>
+                        <LeaderboardContent
+                        items={filteredLeaderboard}
+                        qualifiedCount={qualifiedCount}
+                        viewMode={viewMode}
+                        />
+                    </Reveal>
+                </div>
 
-            <TopQualifiedCard
-              topProjects={topProjects}
-              qualifiedCount={qualifiedCount}
-            />
+                <aside className="space-y-6 lg:sticky lg:top-24 lg:h-fit">
+                    <Reveal delay={0.1}>
+                    <OfficialStatusCard
+                    config={config}
+                    refreshing={refreshing}
+                    autoRefresh={autoRefresh}
+                    lastUpdatedAt={lastUpdatedAt}
+                    />
+                    </Reveal>
 
-            <LeaderSpotlightCard leader={leader} />
+                    <Reveal delay={0.08}>
+                    <TopQualifiedCard
+                    topProjects={topProjects}
+                    qualifiedCount={qualifiedCount}
+                    />
+                    </Reveal>
 
-            <QualificationOverviewCard
-              totalProjects={leaderboard.length}
-              qualifiedProjects={qualifiedProjects}
-              qualifiedCount={qualifiedCount}
-            />
+                    <Reveal delay={0.1}>
+                    <LeaderSpotlightCard leader={leader} />
+                    </Reveal>
 
-            <LeaderboardRulesCard config={config} />
-          </aside>
+                    <Reveal delay={0.12}>
+                    <QualificationOverviewCard
+                    totalProjects={leaderboard.length}
+                    qualifiedProjects={qualifiedProjects}
+                    qualifiedCount={qualifiedCount}
+                    />
+                    </Reveal>
+
+                    <Reveal delay={0.14}>
+                    <LeaderboardRulesCard config={config} />
+                    </Reveal>
+                </aside>
+            </section>
         </section>
-      </section>
+
+        <PublicFooter />
     </main>
   )
 }
@@ -315,64 +342,64 @@ function Background() {
   )
 }
 
-function LeaderboardNavbar({
-  autoRefresh,
-  refreshing,
-  onToggleAutoRefresh,
-}: {
-  autoRefresh: boolean
-  refreshing: boolean
-  onToggleAutoRefresh: () => void
-}) {
-  return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050712]/70 backdrop-blur-2xl">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-400/15 text-cyan-200 ring-1 ring-cyan-300/30">
-            <Code2 size={21} />
-          </div>
-          <div>
-            <div className="text-lg font-black tracking-tight text-white">
-              YOU<span className="text-cyan-300">·</span>DEV
-            </div>
-            <div className="text-xs text-slate-500">Classement officiel</div>
-          </div>
-        </Link>
+// function LeaderboardNavbar({
+//   autoRefresh,
+//   refreshing,
+//   onToggleAutoRefresh,
+// }: {
+//   autoRefresh: boolean
+//   refreshing: boolean
+//   onToggleAutoRefresh: () => void
+// }) {
+//   return (
+//     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050712]/70 backdrop-blur-2xl">
+//       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+//         <Link href="/" className="flex items-center gap-3">
+//           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-400/15 text-cyan-200 ring-1 ring-cyan-300/30">
+//             <Code2 size={21} />
+//           </div>
+//           <div>
+//             <div className="text-lg font-black tracking-tight text-white">
+//               YOU<span className="text-cyan-300">·</span>DEV
+//             </div>
+//             <div className="text-xs text-slate-500">Classement officiel</div>
+//           </div>
+//         </Link>
 
-        <div className="hidden items-center gap-6 text-sm text-slate-300 md:flex">
-          <Link href="/" className="transition hover:text-white">
-            Accueil
-          </Link>
-          <Link href="/leaderboard" className="text-cyan-200">
-            Classement
-          </Link>
-          <a className="transition hover:text-white" href="#podium">
-            Podium
-          </a>
-          <a className="transition hover:text-white" href="#full">
-            Classement complet
-          </a>
-        </div>
+//         <div className="hidden items-center gap-6 text-sm text-slate-300 md:flex">
+//           <Link href="/" className="transition hover:text-white">
+//             Accueil
+//           </Link>
+//           <Link href="/leaderboard" className="text-cyan-200">
+//             Classement
+//           </Link>
+//           <a className="transition hover:text-white" href="#podium">
+//             Podium
+//           </a>
+//           <a className="transition hover:text-white" href="#full">
+//             Classement complet
+//           </a>
+//         </div>
 
-        <button
-          onClick={onToggleAutoRefresh}
-          className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold transition ${
-            autoRefresh
-              ? "bg-red-500/15 text-red-200"
-              : "bg-white/5 text-slate-300"
-          }`}
-        >
-          {refreshing ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
-          ) : (
-            <Zap className="h-3 w-3" />
-          )}
-          {autoRefresh ? "Live ON" : "Live OFF"}
-        </button>
-      </nav>
-    </header>
-  )
-}
+//         <button
+//           onClick={onToggleAutoRefresh}
+//           className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold transition ${
+//             autoRefresh
+//               ? "bg-red-500/15 text-red-200"
+//               : "bg-white/5 text-slate-300"
+//           }`}
+//         >
+//           {refreshing ? (
+//             <Loader2 className="h-3 w-3 animate-spin" />
+//           ) : (
+//             <Zap className="h-3 w-3" />
+//           )}
+//           {autoRefresh ? "Live ON" : "Live OFF"}
+//         </button>
+//       </nav>
+//     </header>
+//   )
+// }
 
 function TopActions() {
   return (
@@ -615,7 +642,8 @@ function PodiumCard({
     <Link href={`/projects/${item.slug}`}>
       <motion.div
         whileHover={{ y: -7, scale: 1.01 }}
-        className={`glass-card relative h-full overflow-hidden rounded-[2.25rem] border border-white/10 p-5 ${
+        transition={{ duration: 0.25 }}
+        className={`glass-card relative h-full overflow-hidden rounded-[2.25rem] border border-white/10 p-5 transition hover:border-cyan-300/30 ${
           large ? "lg:-mt-6" : "lg:mt-8"
         }`}
       >
@@ -623,16 +651,29 @@ function PodiumCard({
           className={`absolute inset-0 bg-gradient-to-br ${toneClasses[tone]}`}
         />
         <div className="absolute -right-20 -top-20 h-52 w-52 rounded-full bg-white/10 blur-3xl" />
+        <motion.div
+          className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/70 to-transparent"
+          animate={{ opacity: [0.3, 1, 0.3] }}
+          transition={{ duration: 2.4, repeat: Infinity }}
+        />
 
         <div className="relative">
           <div className="mb-5 flex items-center justify-between">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-black/25">
+            <motion.div
+              animate={
+                item.rank === 1
+                  ? { y: [0, -4, 0], rotate: [0, 3, 0] }
+                  : undefined
+              }
+              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+              className="flex h-12 w-12 items-center justify-center rounded-2xl bg-black/25"
+            >
               {item.rank === 1 ? (
                 <Crown className="h-6 w-6" />
               ) : (
                 <Medal className="h-6 w-6" />
               )}
-            </div>
+            </motion.div>
 
             <Badge className="rounded-full bg-black/40 text-white">
               Rang #{item.rank}
@@ -902,12 +943,13 @@ function LeaderboardContent({
   if (viewMode === "compact") {
     return (
       <div className="space-y-3">
-        {items.map((item) => (
-          <LeaderboardCompactRow
-            key={item.id}
-            item={item}
-            qualifiedCount={qualifiedCount}
-          />
+        {items.map((item, index) => (
+          <Reveal key={item.id} delay={index * 0.03} y={14}>
+            <LeaderboardCompactRow
+              item={item}
+              qualifiedCount={qualifiedCount}
+            />
+          </Reveal>
         ))}
       </div>
     )
@@ -915,12 +957,13 @@ function LeaderboardContent({
 
   return (
     <div className="grid gap-4 xl:grid-cols-2">
-      {items.map((item) => (
-        <LeaderboardProjectCard
-          key={item.id}
-          item={item}
-          qualifiedCount={qualifiedCount}
-        />
+      {items.map((item, index) => (
+        <Reveal key={item.id} delay={index * 0.03} y={16}>
+          <LeaderboardProjectCard
+            item={item}
+            qualifiedCount={qualifiedCount}
+          />
+        </Reveal>
       ))}
     </div>
   )
@@ -928,7 +971,7 @@ function LeaderboardContent({
 
 function LeaderboardProjectCard({
   item,
-  qualifiedCount,
+//   qualifiedCount,
 }: {
   item: LeaderboardItem
   qualifiedCount: number
@@ -942,10 +985,12 @@ function LeaderboardProjectCard({
       >
         <div className="relative h-36 bg-gradient-to-br from-slate-950 via-blue-950 to-violet-950">
           {item.thumbnailUrl ? (
-            <img
-              src={item.thumbnailUrl}
-              alt={item.projectName}
-              className="h-full w-full object-cover opacity-80 transition duration-500 group-hover:scale-105"
+            <Image
+                src={item.thumbnailUrl}
+                alt={item.projectName}
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                className="object-cover opacity-80 transition duration-500 group-hover:scale-105"
             />
           ) : (
             <div className="flex h-full items-center justify-center">
@@ -1123,9 +1168,16 @@ function OfficialStatusCard({
     <Card className="glass-card neon-border rounded-[2rem] border-white/10">
       <CardContent className="p-6">
         <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-400/10 text-red-200">
+          <motion.div
+            animate={{
+              scale: refreshing ? [1, 1.08, 1] : [1, 1.04, 1],
+              opacity: [0.75, 1, 0.75],
+            }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-400/10 text-red-200"
+          >
             <Activity className="h-6 w-6" />
-          </div>
+          </motion.div>
 
           <div>
             <h3 className="text-lg font-black text-white">Centre live</h3>
@@ -1324,9 +1376,12 @@ function QualificationOverviewCard({
           </div>
 
           <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/10">
-            <div
+            <motion.div
+              initial={{ width: 0 }}
+              whileInView={{ width: `${progress}%` }}
+              viewport={{ once: true }}
+              transition={{ duration: 1, ease: "easeOut" }}
               className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-500"
-              style={{ width: `${progress}%` }}
             />
           </div>
 

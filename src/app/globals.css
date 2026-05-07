@@ -3,6 +3,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* =========================================================
+   YOUDEV GLOBAL THEME
+   Dark mode = default
+   Light mode = enabled when html has class .light
+   ========================================================= */
+
 :root {
   --background: #050712;
   --foreground: #f8fafc;
@@ -39,6 +45,168 @@
   --chart-3: #06b6d4;
   --chart-4: #22c55e;
   --chart-5: #f59e0b;
+
+  /* Custom YouDev dark tokens */
+  --app-bg: #050712;
+  --app-bg-soft: #0b1020;
+  --app-surface: rgba(15, 23, 42, 0.62);
+  --app-surface-strong: rgba(15, 23, 42, 0.82);
+  --app-surface-hover: rgba(255, 255, 255, 0.06);
+
+  --app-text: #ffffff;
+  --app-text-soft: #e2e8f0;
+  --app-muted-text: #94a3b8;
+  --app-muted-text-strong: #cbd5e1;
+
+  --app-border: rgba(148, 163, 184, 0.18);
+  --app-border-strong: rgba(56, 189, 248, 0.28);
+
+  --app-grid-line: rgba(148, 163, 184, 0.07);
+
+  --app-glow-cyan: rgba(34, 211, 238, 0.16);
+  --app-glow-blue: rgba(79, 124, 255, 0.22);
+  --app-glow-violet: rgba(124, 58, 237, 0.24);
+
+  --app-shadow: rgba(0, 0, 0, 0.38);
+  --app-card-shadow: rgba(0, 0, 0, 0.38);
+
+  --app-selection-bg: rgba(56, 189, 248, 0.35);
+  --app-selection-text: #ffffff;
+
+  --premium-text-start: #ffffff;
+  --premium-text-mid-1: #93c5fd;
+  --premium-text-mid-2: #67e8f9;
+  --premium-text-end: #c4b5fd;
+}
+
+/* =========================================================
+   LIGHT MODE TOKENS
+   Important: this only changes global reusable classes.
+   Pages with hardcoded classes like bg-[#050712] or text-white
+   will be converted gradually in the next steps.
+   ========================================================= */
+
+.light {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+
+  --card: rgba(255, 255, 255, 0.78);
+  --card-foreground: #0f172a;
+
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+
+  --secondary: #7c3aed;
+  --secondary-foreground: #ffffff;
+
+  --muted: rgba(15, 23, 42, 0.06);
+  --muted-foreground: #64748b;
+
+  --accent: #0891b2;
+  --accent-foreground: #ffffff;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  --border: rgba(15, 23, 42, 0.14);
+  --input: rgba(15, 23, 42, 0.14);
+  --ring: #0284c7;
+
+  /* Custom YouDev light tokens */
+  --app-bg: #f8fafc;
+  --app-bg-soft: #eef6ff;
+  --app-surface: rgba(255, 255, 255, 0.72);
+  --app-surface-strong: rgba(255, 255, 255, 0.92);
+  --app-surface-hover: rgba(15, 23, 42, 0.045);
+
+  --app-text: #0f172a;
+  --app-text-soft: #1e293b;
+  --app-muted-text: #64748b;
+  --app-muted-text-strong: #334155;
+
+  --app-border: rgba(15, 23, 42, 0.12);
+  --app-border-strong: rgba(14, 165, 233, 0.28);
+
+  --app-grid-line: rgba(15, 23, 42, 0.06);
+
+  --app-glow-cyan: rgba(6, 182, 212, 0.16);
+  --app-glow-blue: rgba(37, 99, 235, 0.14);
+  --app-glow-violet: rgba(124, 58, 237, 0.12);
+
+  --app-shadow: rgba(15, 23, 42, 0.12);
+  --app-card-shadow: rgba(15, 23, 42, 0.13);
+
+  --app-selection-bg: rgba(14, 165, 233, 0.22);
+  --app-selection-text: #0f172a;
+
+  --premium-text-start: #0f172a;
+  --premium-text-mid-1: #1d4ed8;
+  --premium-text-mid-2: #0891b2;
+  --premium-text-end: #7c3aed;
+}
+
+.dark {
+  --background: #050712;
+  --foreground: #f8fafc;
+
+  --card: rgba(15, 23, 42, 0.72);
+  --card-foreground: #f8fafc;
+
+  --popover: #0f172a;
+  --popover-foreground: #f8fafc;
+
+  --primary: #4f7cff;
+  --primary-foreground: #ffffff;
+
+  --secondary: #7c3aed;
+  --secondary-foreground: #ffffff;
+
+  --muted: rgba(148, 163, 184, 0.14);
+  --muted-foreground: #94a3b8;
+
+  --accent: #06b6d4;
+  --accent-foreground: #ffffff;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --border: rgba(148, 163, 184, 0.22);
+  --input: rgba(148, 163, 184, 0.18);
+  --ring: #38bdf8;
+
+  --app-bg: #050712;
+  --app-bg-soft: #0b1020;
+  --app-surface: rgba(15, 23, 42, 0.62);
+  --app-surface-strong: rgba(15, 23, 42, 0.82);
+  --app-surface-hover: rgba(255, 255, 255, 0.06);
+
+  --app-text: #ffffff;
+  --app-text-soft: #e2e8f0;
+  --app-muted-text: #94a3b8;
+  --app-muted-text-strong: #cbd5e1;
+
+  --app-border: rgba(148, 163, 184, 0.18);
+  --app-border-strong: rgba(56, 189, 248, 0.28);
+
+  --app-grid-line: rgba(148, 163, 184, 0.07);
+
+  --app-glow-cyan: rgba(34, 211, 238, 0.16);
+  --app-glow-blue: rgba(79, 124, 255, 0.22);
+  --app-glow-violet: rgba(124, 58, 237, 0.24);
+
+  --app-shadow: rgba(0, 0, 0, 0.38);
+  --app-card-shadow: rgba(0, 0, 0, 0.38);
+
+  --app-selection-bg: rgba(56, 189, 248, 0.35);
+  --app-selection-text: #ffffff;
+
+  --premium-text-start: #ffffff;
+  --premium-text-mid-1: #93c5fd;
+  --premium-text-mid-2: #67e8f9;
+  --premium-text-end: #c4b5fd;
 }
 
 @theme inline {
@@ -77,6 +245,10 @@
   --radius-2xl: calc(var(--radius) + 12px);
 }
 
+/* =========================================================
+   BASE
+   ========================================================= */
+
 * {
   border-color: var(--border);
 }
@@ -88,32 +260,57 @@ html {
 body {
   min-height: 100vh;
   background:
-    radial-gradient(circle at 20% 10%, rgba(79, 124, 255, 0.22), transparent 34%),
-    radial-gradient(circle at 80% 0%, rgba(124, 58, 237, 0.24), transparent 34%),
-    radial-gradient(circle at 50% 100%, rgba(6, 182, 212, 0.16), transparent 36%),
-    #050712;
+    radial-gradient(circle at 20% 10%, var(--app-glow-blue), transparent 34%),
+    radial-gradient(circle at 80% 0%, var(--app-glow-violet), transparent 34%),
+    radial-gradient(circle at 50% 100%, var(--app-glow-cyan), transparent 36%),
+    var(--app-bg);
   color: var(--foreground);
+  transition:
+    background-color 260ms ease,
+    color 260ms ease;
 }
 
 ::selection {
-  background: rgba(56, 189, 248, 0.35);
-  color: white;
+  background: var(--app-selection-bg);
+  color: var(--app-selection-text);
 }
 
+/* =========================================================
+   EXISTING YOUDEV CLASSES — preserved
+   ========================================================= */
+
 .glass-card {
-  background: rgba(15, 23, 42, 0.62);
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   box-shadow:
     0 0 0 1px rgba(56, 189, 248, 0.04),
-    0 20px 80px rgba(0, 0, 0, 0.38);
+    0 20px 80px var(--app-card-shadow);
   backdrop-filter: blur(22px);
+  transition:
+    background-color 260ms ease,
+    border-color 260ms ease,
+    box-shadow 260ms ease,
+    transform 220ms ease;
+}
+
+.light .glass-card {
+  box-shadow:
+    0 0 0 1px rgba(14, 165, 233, 0.06),
+    0 22px 70px rgba(15, 23, 42, 0.12);
 }
 
 .neon-border {
   box-shadow:
-    0 0 0 1px rgba(56, 189, 248, 0.22),
+    0 0 0 1px var(--app-border-strong),
     0 0 35px rgba(79, 124, 255, 0.12),
     inset 0 0 25px rgba(124, 58, 237, 0.08);
+}
+
+.light .neon-border {
+  box-shadow:
+    0 0 0 1px rgba(14, 165, 233, 0.18),
+    0 0 28px rgba(14, 165, 233, 0.12),
+    inset 0 0 24px rgba(124, 58, 237, 0.045);
 }
 
 .hero-glow {
@@ -122,17 +319,468 @@ body {
     0 0 40px rgba(124, 58, 237, 0.35);
 }
 
+.light .hero-glow {
+  text-shadow:
+    0 0 16px rgba(37, 99, 235, 0.22),
+    0 0 34px rgba(14, 165, 233, 0.16);
+}
+
 .grid-bg {
   background-image:
-    linear-gradient(rgba(148, 163, 184, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.07) 1px, transparent 1px);
+    linear-gradient(var(--app-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--app-grid-line) 1px, transparent 1px);
   background-size: 44px 44px;
   mask-image: radial-gradient(circle at center, black 35%, transparent 78%);
 }
 
 .premium-gradient-text {
-  background: linear-gradient(90deg, #ffffff, #93c5fd, #67e8f9, #c4b5fd);
+  background: linear-gradient(
+    90deg,
+    var(--premium-text-start),
+    var(--premium-text-mid-1),
+    var(--premium-text-mid-2),
+    var(--premium-text-end)
+  );
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+/* =========================================================
+   NEW REUSABLE THEME CLASSES
+   We will use these gradually in Navbar, Footer, Home, etc.
+   ========================================================= */
+
+.app-bg {
+  background:
+    radial-gradient(circle at 20% 10%, var(--app-glow-blue), transparent 34%),
+    radial-gradient(circle at 80% 0%, var(--app-glow-violet), transparent 34%),
+    radial-gradient(circle at 50% 100%, var(--app-glow-cyan), transparent 36%),
+    var(--app-bg);
+}
+
+.app-bg-solid {
+  background: var(--app-bg);
+}
+
+.app-bg-soft {
+  background: var(--app-bg-soft);
+}
+
+.app-text {
+  color: var(--app-text);
+}
+
+.app-text-soft {
+  color: var(--app-text-soft);
+}
+
+.app-muted {
+  color: var(--app-muted-text);
+}
+
+.app-muted-strong {
+  color: var(--app-muted-text-strong);
+}
+
+.app-card {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  box-shadow:
+    0 0 0 1px rgba(56, 189, 248, 0.04),
+    0 20px 80px var(--app-card-shadow);
+  backdrop-filter: blur(22px);
+  transition:
+    background-color 260ms ease,
+    border-color 260ms ease,
+    box-shadow 260ms ease,
+    transform 220ms ease;
+}
+
+.app-card-strong {
+  background: var(--app-surface-strong);
+  border: 1px solid var(--app-border);
+  box-shadow:
+    0 0 0 1px rgba(56, 189, 248, 0.04),
+    0 20px 80px var(--app-card-shadow);
+  backdrop-filter: blur(24px);
+  transition:
+    background-color 260ms ease,
+    border-color 260ms ease,
+    box-shadow 260ms ease,
+    transform 220ms ease;
+}
+
+.app-card-hover:hover {
+  background: var(--app-surface-hover);
+  border-color: var(--app-border-strong);
+}
+
+.app-border {
+  border-color: var(--app-border);
+}
+
+.app-border-strong {
+  border-color: var(--app-border-strong);
+}
+
+.app-input {
+  background: var(--app-surface);
+  border-color: var(--app-border);
+  color: var(--app-text);
+}
+
+.app-input::placeholder {
+  color: var(--app-muted-text);
+}
+
+.app-navbar {
+  background: color-mix(in srgb, var(--app-bg) 78%, transparent);
+  border-bottom: 1px solid var(--app-border);
+  backdrop-filter: blur(24px);
+}
+
+.app-footer {
+  background: color-mix(in srgb, var(--app-bg) 84%, transparent);
+  border-top: 1px solid var(--app-border);
+  backdrop-filter: blur(24px);
+}
+
+.app-divider {
+  border-color: var(--app-border);
+}
+
+.app-glow-cyan {
+  background: var(--app-glow-cyan);
+}
+
+.app-glow-blue {
+  background: var(--app-glow-blue);
+}
+
+.app-glow-violet {
+  background: var(--app-glow-violet);
+}
+
+/* =========================================================
+   Hardcoded Tailwind color helpers override for light mode
+   These help existing pages change without rewriting everything.
+   They are intentionally scoped to .light.
+   ========================================================= */
+
+.light .bg-\[\#050712\] {
+  background-color: var(--app-bg) !important;
+}
+
+.light .text-white {
+  color: var(--app-text) !important;
+}
+
+.light .text-slate-200 {
+  color: var(--app-text-soft) !important;
+}
+
+.light .text-slate-300 {
+  color: var(--app-muted-text-strong) !important;
+}
+
+.light .text-slate-400 {
+  color: var(--app-muted-text) !important;
+}
+
+.light .text-slate-500 {
+  color: #64748b !important;
+}
+
+.light .border-white\/10 {
+  border-color: var(--app-border) !important;
+}
+
+.light .border-white\/15 {
+  border-color: rgba(15, 23, 42, 0.16) !important;
+}
+
+.light .bg-white\/5,
+.light .bg-white\/\[0\.04\] {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.light .bg-white\/10 {
+  background-color: rgba(15, 23, 42, 0.06) !important;
+}
+
+.light .bg-black\/20,
+.light .bg-black\/25,
+.light .bg-black\/40,
+.light .bg-black\/45,
+.light .bg-black\/50,
+.light .bg-black\/70 {
+  background-color: rgba(255, 255, 255, 0.68) !important;
+}
+
+.light .placeholder\:text-slate-500::placeholder {
+  color: #64748b !important;
+}
+
+/* =========================================================
+   Premium theme helpers for future migration
+   ========================================================= */
+
+.theme-transition {
+  transition:
+    background-color 260ms ease,
+    color 260ms ease,
+    border-color 260ms ease,
+    box-shadow 260ms ease;
+}
+
+.premium-hover {
+  transition:
+    transform 220ms ease,
+    border-color 220ms ease,
+    background-color 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.premium-hover:hover {
+  transform: translateY(-4px);
+  border-color: var(--app-border-strong);
+}
+
+.premium-ring {
+  box-shadow:
+    0 0 0 1px var(--app-border-strong),
+    0 0 35px rgba(14, 165, 233, 0.12);
+}
+
+.premium-soft-line {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--app-border-strong),
+    transparent
+  );
+}
+
+/* =========================================================
+   Motion safety
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+
+/* =========================================================
+   LIGHT MODE — STRONGER PREMIUM CONTRAST FIX
+   Add this block at the END of globals.css
+   ========================================================= */
+
+.light body {
+  background:
+    radial-gradient(circle at 20% 8%, rgba(6, 182, 212, 0.22), transparent 30%),
+    radial-gradient(circle at 82% 0%, rgba(124, 58, 237, 0.18), transparent 32%),
+    radial-gradient(circle at 50% 100%, rgba(37, 99, 235, 0.12), transparent 36%),
+    #edf6ff !important;
+  color: #0f172a !important;
+}
+
+/* Main glass cards in light mode */
+.light .glass-card {
+  background: rgba(255, 255, 255, 0.82) !important;
+  border: 1px solid rgba(15, 23, 42, 0.16) !important;
+  box-shadow:
+    0 0 0 1px rgba(14, 165, 233, 0.08),
+    0 24px 70px rgba(15, 23, 42, 0.14) !important;
+  backdrop-filter: blur(24px);
+}
+
+/* Stronger neon border in light */
+.light .neon-border {
+  box-shadow:
+    0 0 0 1px rgba(14, 165, 233, 0.22),
+    0 0 34px rgba(14, 165, 233, 0.16),
+    inset 0 0 26px rgba(124, 58, 237, 0.06) !important;
+}
+
+/* Text contrast */
+.light .text-white {
+  color: #0f172a !important;
+}
+
+.light .text-slate-100,
+.light .text-slate-200 {
+  color: #1e293b !important;
+}
+
+.light .text-slate-300 {
+  color: #334155 !important;
+}
+
+.light .text-slate-400 {
+  color: #475569 !important;
+}
+
+.light .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Cyan / violet / emerald colors must stay visible */
+.light .text-cyan-100,
+.light .text-cyan-200,
+.light .text-cyan-300 {
+  color: #0369a1 !important;
+}
+
+.light .text-violet-100,
+.light .text-violet-200,
+.light .text-violet-300 {
+  color: #6d28d9 !important;
+}
+
+.light .text-emerald-100,
+.light .text-emerald-200,
+.light .text-emerald-300 {
+  color: #047857 !important;
+}
+
+.light .text-yellow-100,
+.light .text-yellow-200,
+.light .text-yellow-300 {
+  color: #a16207 !important;
+}
+
+.light .text-red-100,
+.light .text-red-200,
+.light .text-red-300 {
+  color: #dc2626 !important;
+}
+
+/* Borders */
+.light .border-white\/10,
+.light .border-white\/15,
+.light .border-cyan-300\/20,
+.light .border-cyan-300\/30 {
+  border-color: rgba(15, 23, 42, 0.16) !important;
+}
+
+/* Soft surfaces */
+.light .bg-white\/5,
+.light .bg-white\/10,
+.light .bg-white\/\[0\.04\],
+.light .bg-white\/\[0\.06\] {
+  background-color: rgba(255, 255, 255, 0.72) !important;
+}
+
+/* Dark overlays used in cards */
+.light .bg-black\/20,
+.light .bg-black\/25,
+.light .bg-black\/40,
+.light .bg-black\/45,
+.light .bg-black\/50,
+.light .bg-black\/60,
+.light .bg-black\/70 {
+  background-color: rgba(255, 255, 255, 0.72) !important;
+}
+
+/* Badges: make them readable in light */
+.light .bg-cyan-400\/10,
+.light .bg-cyan-400\/15,
+.light .bg-cyan-400\/20 {
+  background-color: rgba(6, 182, 212, 0.16) !important;
+}
+
+.light .bg-violet-400\/10,
+.light .bg-violet-400\/15,
+.light .bg-violet-400\/20 {
+  background-color: rgba(124, 58, 237, 0.14) !important;
+}
+
+.light .bg-emerald-400\/10,
+.light .bg-emerald-400\/15,
+.light .bg-emerald-400\/20 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+
+.light .bg-yellow-400\/10,
+.light .bg-yellow-400\/15,
+.light .bg-yellow-400\/20 {
+  background-color: rgba(234, 179, 8, 0.18) !important;
+}
+
+.light .bg-red-400\/10,
+.light .bg-red-400\/15,
+.light .bg-red-500\/15 {
+  background-color: rgba(239, 68, 68, 0.14) !important;
+}
+
+/* Buttons and active states */
+.light .bg-cyan-400 {
+  background-color: #06b6d4 !important;
+  color: #020617 !important;
+}
+
+.light .hover\:bg-cyan-300:hover {
+  background-color: #22d3ee !important;
+  color: #020617 !important;
+}
+
+/* Inputs */
+.light input,
+.light .app-input {
+  background-color: rgba(255, 255, 255, 0.82) !important;
+  border-color: rgba(15, 23, 42, 0.16) !important;
+  color: #0f172a !important;
+}
+
+.light input::placeholder,
+.light .placeholder\:text-slate-500::placeholder {
+  color: #64748b !important;
+}
+
+/* Navbar / Footer stronger light style */
+.light .app-navbar {
+  background: rgba(248, 250, 252, 0.88) !important;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.12) !important;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
+}
+
+.light .app-footer {
+  background: rgba(248, 250, 252, 0.92) !important;
+  border-top: 1px solid rgba(15, 23, 42, 0.12) !important;
+}
+
+/* Premium gradient text in light */
+.light .premium-gradient-text {
+  background: linear-gradient(90deg, #0f172a, #1d4ed8, #0891b2, #7c3aed);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+}
+
+/* Grid background visible but soft */
+.light .grid-bg {
+  background-image:
+    linear-gradient(rgba(15, 23, 42, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.055) 1px, transparent 1px) !important;
+}
+
+/* Make hero/card gradients less washed */
+.light .from-cyan-400\/10 {
+  --tw-gradient-from: rgba(6, 182, 212, 0.18) var(--tw-gradient-from-position) !important;
+}
+
+.light .to-violet-500\/10 {
+  --tw-gradient-to: rgba(124, 58, 237, 0.14) var(--tw-gradient-to-position) !important;
 }

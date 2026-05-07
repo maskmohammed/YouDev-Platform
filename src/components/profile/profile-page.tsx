@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { AnimatePresence, motion } from "framer-motion"
 import {
   ArrowLeft,
@@ -33,6 +34,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+
+import FloatingGlow from "@/components/animations/floating-glow"
+import Reveal from "@/components/animations/reveal"
+import PublicFooter from "@/components/layout/public-footer"
+import PublicNavbar from "@/components/layout/public-navbar"
 
 type UserProfile = {
   id: string
@@ -121,8 +127,7 @@ export default function ProfilePage() {
     const q = search.toLowerCase().trim()
 
     let result = votes.filter((vote) => {
-      const matchesFilter =
-        voteFilter === "all" || vote.status === "VALID"
+      const matchesFilter = voteFilter === "all" || vote.status === "VALID"
 
       const matchesSearch =
         !q ||
@@ -155,7 +160,7 @@ export default function ProfilePage() {
   const voteUsagePercentage = useMemo(() => {
     if (!remainingVotes) return 0
     return Math.round(
-      (remainingVotes.usedVotes / remainingVotes.maxVotesPerUser) * 100
+      (remainingVotes.usedVotes / remainingVotes.maxVotesPerUser) * 100,
     )
   }, [remainingVotes])
 
@@ -198,7 +203,11 @@ export default function ProfilePage() {
       const votesJson = await votesResponse.json()
       const remainingJson = await remainingResponse.json()
 
-      if (!profileJson.success || !votesJson.success || !remainingJson.success) {
+      if (
+        !profileJson.success ||
+        !votesJson.success ||
+        !remainingJson.success
+      ) {
         localStorage.removeItem("youdev_user_token")
         setUserToken(null)
         setProfile(null)
@@ -324,17 +333,19 @@ export default function ProfilePage() {
     }
   }
 
-  useEffect(() => {
-    const savedToken = localStorage.getItem("youdev_user_token")
+    useEffect(() => {
+    queueMicrotask(() => {
+        const savedToken = localStorage.getItem("youdev_user_token")
 
-    if (!savedToken) {
-      setLoading(false)
-      return
-    }
+        if (!savedToken) {
+        setLoading(false)
+        return
+        }
 
-    setUserToken(savedToken)
-    loadProfile(savedToken)
-  }, [])
+        setUserToken(savedToken)
+        void loadProfile(savedToken)
+    })
+    }, [])
 
   if (loading) {
     return <ProfileLoading />
@@ -344,82 +355,98 @@ export default function ProfilePage() {
     <main className="min-h-screen overflow-hidden">
       <Background />
 
-      <ProfileNavbar
-        profile={profile}
-        refreshing={refreshing}
-        onRefresh={() => {
-          if (userToken) {
-            loadProfile(userToken, { silent: true })
-          }
-        }}
-      />
+      <PublicNavbar />
 
-      <section className="mx-auto max-w-7xl px-4 pb-20 pt-8 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-7xl px-4 pb-12 pt-6 sm:px-6 sm:pb-16 sm:pt-8 lg:px-8">
         <TopActions />
 
         <FeedbackBanner feedback={feedback} />
 
         {!profile ? (
-          <NotConnectedState connecting={connecting} onConnect={devLogin} />
+          <Reveal>
+            <NotConnectedState connecting={connecting} onConnect={devLogin} />
+          </Reveal>
         ) : (
-          <section className="grid gap-8 lg:grid-cols-[1fr_420px]">
-            <div className="space-y-7">
-              <ProfileHero
-                profile={profile}
-                remainingVotes={remainingVotes}
-                votesCount={validVotes.length}
-                refreshing={refreshing}
-              />
+          <section className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-8">
+            <div className="space-y-5 sm:space-y-6 lg:space-y-7">
+              <Reveal>
+                <ProfileHero
+                  profile={profile}
+                  remainingVotes={remainingVotes}
+                  votesCount={validVotes.length}
+                  refreshing={refreshing}
+                />
+              </Reveal>
 
-              <ProfileImpactStrip
-                remainingVotes={remainingVotes}
-                votesCount={validVotes.length}
-                latestVote={latestVote}
-                voteUsagePercentage={voteUsagePercentage}
-              />
+              <Reveal delay={0.05}>
+                <ProfileImpactStrip
+                  remainingVotes={remainingVotes}
+                  votesCount={validVotes.length}
+                  latestVote={latestVote}
+                  voteUsagePercentage={voteUsagePercentage}
+                />
+              </Reveal>
 
-              <VotesSection
-                votes={filteredVotes}
-                totalVotes={votes.length}
-                validVotesCount={validVotes.length}
-                viewMode={viewMode}
-                setViewMode={setViewMode}
-                voteFilter={voteFilter}
-                setVoteFilter={setVoteFilter}
-                voteSort={voteSort}
-                setVoteSort={setVoteSort}
-                search={search}
-                setSearch={setSearch}
-              />
+              <Reveal delay={0.08}>
+                <VotesSection
+                  votes={filteredVotes}
+                  totalVotes={votes.length}
+                  validVotesCount={validVotes.length}
+                  viewMode={viewMode}
+                  setViewMode={setViewMode}
+                  voteFilter={voteFilter}
+                  setVoteFilter={setVoteFilter}
+                  voteSort={voteSort}
+                  setVoteSort={setVoteSort}
+                  search={search}
+                  setSearch={setSearch}
+                />
+              </Reveal>
 
-              <AccountSecurityCard profile={profile} />
+              <Reveal delay={0.1}>
+                <AccountSecurityCard profile={profile} />
+              </Reveal>
             </div>
 
-            <aside className="space-y-6 lg:sticky lg:top-24 lg:h-fit">
-              <ProfileControlCenter
-                profile={profile}
-                remainingVotes={remainingVotes}
-                refreshing={refreshing}
-                onRefresh={() => {
-                  if (userToken) {
-                    loadProfile(userToken, { silent: true })
-                  }
-                }}
-              />
+            <aside className="space-y-5 sm:space-y-6 lg:sticky lg:top-24 lg:h-fit">
+              <Reveal delay={0.05}>
+                <ProfileControlCenter
+                  profile={profile}
+                  remainingVotes={remainingVotes}
+                  refreshing={refreshing}
+                  onRefresh={() => {
+                    if (userToken) {
+                      loadProfile(userToken, { silent: true })
+                    }
+                  }}
+                />
+              </Reveal>
 
-              <VotesSummaryCard remainingVotes={remainingVotes} />
+              <Reveal delay={0.08}>
+                <VotesSummaryCard remainingVotes={remainingVotes} />
+              </Reveal>
 
-              <ProfileIdentityCard profile={profile} />
+              <Reveal delay={0.1}>
+                <ProfileIdentityCard profile={profile} />
+              </Reveal>
 
-              <LatestVoteCard latestVote={latestVote} />
+              <Reveal delay={0.12}>
+                <LatestVoteCard latestVote={latestVote} />
+              </Reveal>
 
-              <RulesCard />
+              <Reveal delay={0.14}>
+                <RulesCard />
+              </Reveal>
 
-              <LogoutCard loggingOut={loggingOut} onLogout={logout} />
+              <Reveal delay={0.16}>
+                <LogoutCard loggingOut={loggingOut} onLogout={logout} />
+              </Reveal>
             </aside>
           </section>
         )}
       </section>
+
+      <PublicFooter />
     </main>
   )
 }
@@ -430,80 +457,42 @@ function Background() {
       <div className="grid-bg fixed inset-0 -z-20" />
       <div className="fixed inset-0 -z-30 bg-[#050712]" />
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_50%_0%,rgba(34,211,238,0.16),transparent_35%),radial-gradient(circle_at_100%_20%,rgba(124,58,237,0.18),transparent_34%),radial-gradient(circle_at_0%_80%,rgba(59,130,246,0.14),transparent_35%)]" />
-      <div className="pointer-events-none fixed left-1/2 top-0 -z-10 h-96 w-[860px] -translate-x-1/2 rounded-full bg-cyan-400/10 blur-3xl" />
-      <div className="pointer-events-none fixed bottom-0 right-0 -z-10 h-96 w-96 rounded-full bg-violet-500/10 blur-3xl" />
-      <div className="pointer-events-none fixed bottom-24 left-0 -z-10 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
+
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <FloatingGlow size="lg" position="center" className="top-0" />
+        <FloatingGlow
+          size="md"
+          position="right"
+          className="top-36 bg-violet-500/10"
+        />
+        <FloatingGlow
+          size="sm"
+          position="left"
+          className="bottom-20 bg-blue-500/10"
+        />
+      </div>
     </>
-  )
-}
-
-function ProfileNavbar({
-  profile,
-  refreshing,
-  onRefresh,
-}: {
-  profile: UserProfile | null
-  refreshing: boolean
-  onRefresh: () => void
-}) {
-  return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050712]/70 backdrop-blur-2xl">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-400/15 text-cyan-200 ring-1 ring-cyan-300/30">
-            <Code2 size={21} />
-          </div>
-          <div>
-            <div className="text-lg font-black tracking-tight text-white">
-              YOU<span className="text-cyan-300">·</span>DEV
-            </div>
-            <div className="text-xs text-slate-500">Profil utilisateur</div>
-          </div>
-        </Link>
-
-        <div className="flex items-center gap-3">
-          {profile && (
-            <button
-              onClick={onRefresh}
-              className="hidden items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-slate-300 transition hover:bg-white/10 sm:flex"
-            >
-              {refreshing ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <RefreshCw className="h-3 w-3" />
-              )}
-              Actualiser
-            </button>
-          )}
-
-          <Badge className="rounded-full bg-cyan-400/10 px-4 py-2 text-cyan-200">
-            <Camera className="mr-2 h-3 w-3" />
-            {profile ? "Connecté" : "Non connecté"}
-          </Badge>
-        </div>
-      </nav>
-    </header>
   )
 }
 
 function TopActions() {
   return (
-    <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+    <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
       <Link href="/">
         <Button
           variant="outline"
-          className="rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10"
+          className="w-full rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10 sm:w-auto"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Retour aux projets
         </Button>
       </Link>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-2 sm:gap-3">
         <Link href="/leaderboard">
           <Button
             variant="outline"
-            className="rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10"
+            className="w-full rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10 sm:w-auto"
           >
             <Trophy className="mr-2 h-4 w-4" />
             Classement
@@ -528,15 +517,13 @@ function FeedbackBanner({ feedback }: { feedback: Feedback }) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -12 }}
           className={`glass-card neon-border mb-8 flex items-center gap-3 rounded-2xl p-5 text-sm font-medium ${
-            feedback.type === "success"
-              ? "text-emerald-200"
-              : "text-red-200"
+            feedback.type === "success" ? "text-emerald-200" : "text-red-200"
           }`}
         >
           {feedback.type === "success" ? (
-            <CheckCircle2 className="h-5 w-5" />
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
           ) : (
-            <XCircle className="h-5 w-5" />
+            <XCircle className="mt-0.5 h-5 w-5 shrink-0" />
           )}
           {feedback.message}
         </motion.div>
@@ -553,34 +540,41 @@ function NotConnectedState({
   onConnect: () => void
 }) {
   return (
-    <section className="glass-card neon-border relative mx-auto max-w-4xl overflow-hidden rounded-[2.75rem] p-8 text-center">
+    <section className="glass-card neon-border relative mx-auto max-w-4xl overflow-hidden rounded-[1.75rem] p-5 text-center sm:rounded-[2.75rem] sm:p-8">
       <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/10 via-transparent to-violet-500/10" />
+
+      <motion.div
+        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/70 to-transparent"
+        animate={{ opacity: [0.25, 1, 0.25] }}
+        transition={{ duration: 2.8, repeat: Infinity }}
+      />
+
       <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-cyan-400/10 blur-3xl" />
       <div className="absolute -bottom-28 left-10 h-72 w-72 rounded-full bg-violet-500/10 blur-3xl" />
 
       <div className="relative">
-        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[1.75rem] bg-cyan-400/10 text-cyan-200 ring-1 ring-cyan-300/20">
-          <User className="h-10 w-10" />
+        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-cyan-400/10 text-cyan-200 ring-1 ring-cyan-300/20 sm:mb-6 sm:h-20 sm:w-20 sm:rounded-[1.75rem]">
+          <User className="h-8 w-8 sm:h-10 sm:w-10" />
         </div>
 
         <Badge className="mb-5 rounded-full bg-yellow-400/15 px-4 py-2 text-yellow-100">
           Session utilisateur requise
         </Badge>
 
-        <p className="mb-3 text-sm font-black uppercase tracking-[0.32em] text-cyan-200/80">
+        <p className="mb-3 text-xs font-black uppercase tracking-[0.24em] text-cyan-200/80 sm:text-sm sm:tracking-[0.32em]">
           User voting center
         </p>
 
-        <h1 className="text-4xl font-black text-white md:text-6xl">
+        <h1 className="text-3xl font-black leading-tight text-white sm:text-4xl md:text-6xl">
           Votre profil YouDev
         </h1>
 
-        <p className="mx-auto mt-5 max-w-2xl leading-8 text-slate-400">
+        <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-400 sm:mt-5 sm:text-base sm:leading-8">
           Connectez-vous pour consulter vos votes, connaître vos votes restants,
           suivre les projets soutenus et gérer votre session utilisateur.
         </p>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
+        <div className="mt-6 grid gap-3 sm:mt-8 md:grid-cols-3">
           <MiniInfoCard icon={<Vote />} title="Suivi votes" />
           <MiniInfoCard icon={<Star />} title="Votes restants" />
           <MiniInfoCard icon={<ShieldCheck />} title="Session sécurisée" />
@@ -589,7 +583,7 @@ function NotConnectedState({
         <Button
           onClick={onConnect}
           disabled={connecting}
-          className="mt-8 h-12 rounded-2xl bg-cyan-400 px-8 font-black text-slate-950 hover:bg-cyan-300 disabled:opacity-60"
+          className="mt-6 h-12 w-full rounded-2xl bg-cyan-400 px-8 font-black text-slate-950 hover:bg-cyan-300 disabled:opacity-60 sm:mt-8 sm:w-auto"
         >
           {connecting ? (
             <>
@@ -610,12 +604,15 @@ function NotConnectedState({
 
 function MiniInfoCard({ icon, title }: { icon: ReactNode; title: string }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+    <motion.div
+      whileHover={{ y: -4, scale: 1.02 }}
+      className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:border-cyan-300/30 sm:rounded-3xl sm:p-5"
+    >
       <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200">
         {icon}
       </div>
       <p className="text-sm font-bold text-white">{title}</p>
-    </div>
+    </motion.div>
   )
 }
 
@@ -634,15 +631,24 @@ function ProfileHero({
     <motion.section
       initial={{ opacity: 0, y: 22 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass-card neon-border relative overflow-hidden rounded-[2.75rem] p-6 md:p-8"
+      whileHover={{ y: -2 }}
+      transition={{ duration: 0.25 }}
+      className="glass-card neon-border relative overflow-hidden rounded-[1.75rem] p-4 sm:rounded-[2.75rem] sm:p-6 md:p-8"
     >
       <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/10 via-transparent to-violet-500/10" />
+
+      <motion.div
+        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/70 to-transparent"
+        animate={{ opacity: [0.25, 1, 0.25] }}
+        transition={{ duration: 2.8, repeat: Infinity }}
+      />
+
       <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-cyan-400/10 blur-3xl" />
       <div className="absolute -bottom-28 left-12 h-72 w-72 rounded-full bg-violet-500/10 blur-3xl" />
 
-      <div className="relative grid gap-8 lg:grid-cols-[1fr_330px]">
+      <div className="relative grid gap-6 lg:grid-cols-[1fr_330px] lg:gap-8">
         <div>
-          <div className="mb-5 flex flex-wrap gap-3">
+          <div className="mb-5 flex flex-wrap gap-2 sm:gap-3">
             <Badge className="rounded-full bg-emerald-400/15 px-4 py-2 text-emerald-200">
               <ShieldCheck className="mr-2 h-4 w-4" />
               Profil actif
@@ -666,26 +672,26 @@ function ProfileHero({
             )}
           </div>
 
-          <p className="mb-3 text-sm font-black uppercase tracking-[0.32em] text-cyan-200/80">
+          <p className="mb-3 text-xs font-black uppercase tracking-[0.24em] text-cyan-200/80 sm:text-sm sm:tracking-[0.32em]">
             User voting center
           </p>
 
-          <h1 className="text-5xl font-black tracking-tight text-white md:text-7xl">
+          <h1 className="text-4xl font-black leading-[0.98] tracking-tight text-white sm:text-5xl md:text-7xl">
             {profile.name}
           </h1>
 
-          <p className="mt-4 text-xl font-semibold text-cyan-200">
+          <p className="mt-3 text-base font-semibold text-cyan-200 sm:mt-4 sm:text-xl">
             @{profile.username}
           </p>
 
-          <p className="mt-5 max-w-3xl text-base leading-8 text-slate-400">
+          <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-400 sm:mt-5 sm:text-base sm:leading-8">
             Suivez vos votes confirmés, consultez vos crédits de vote restants,
             recherchez dans votre historique et retrouvez rapidement les projets
             que vous avez soutenus.
           </p>
         </div>
 
-        <div className="grid gap-3">
+        <div className="grid grid-cols-3 gap-3 lg:grid-cols-1">
           <HeroMetric
             icon={<Vote />}
             label="Votes utilisés"
@@ -717,13 +723,16 @@ function HeroMetric({
   value: string
 }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 transition duration-300 hover:border-cyan-300/30 hover:bg-white/[0.06]">
-      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200">
+    <motion.div
+      whileHover={{ y: -4, scale: 1.02 }}
+      className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 transition duration-300 hover:border-cyan-300/30 hover:bg-white/[0.06] sm:rounded-3xl sm:p-4"
+    >
+      <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200 sm:mb-3 sm:h-10 sm:w-10">
         {icon}
       </div>
-      <div className="text-2xl font-black text-white">{value}</div>
-      <div className="text-xs text-slate-500">{label}</div>
-    </div>
+      <div className="text-xl font-black text-white sm:text-2xl">{value}</div>
+      <div className="text-[11px] text-slate-500 sm:text-xs">{label}</div>
+    </motion.div>
   )
 }
 
@@ -739,7 +748,7 @@ function ProfileImpactStrip({
   voteUsagePercentage: number
 }) {
   return (
-    <div className="grid gap-4 md:grid-cols-4">
+    <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
       <ImpactCard
         icon={<Vote />}
         title="Votes confirmés"
@@ -780,18 +789,22 @@ function ImpactCard({
   text: string
 }) {
   return (
-    <Card className="glass-card rounded-[2rem] border-white/10">
-      <CardContent className="p-5">
-        <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200">
-          {icon}
-        </div>
-        <p className="text-sm text-slate-500">{title}</p>
-        <h3 className="mt-1 line-clamp-1 text-2xl font-black text-white">
-          {value}
-        </h3>
-        <p className="mt-2 text-sm leading-6 text-slate-400">{text}</p>
-      </CardContent>
-    </Card>
+    <motion.div whileHover={{ y: -5 }} transition={{ duration: 0.25 }}>
+      <Card className="glass-card rounded-[1.75rem] border-white/10 transition hover:border-cyan-300/30 sm:rounded-[2rem]">
+        <CardContent className="p-4 sm:p-5">
+          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200">
+            {icon}
+          </div>
+          <p className="text-sm text-slate-500">{title}</p>
+          <h3 className="mt-1 line-clamp-1 text-xl font-black text-white sm:text-2xl">
+            {value}
+          </h3>
+          <p className="mt-2 text-xs leading-5 text-slate-400 sm:text-sm sm:leading-6">
+            {text}
+          </p>
+        </CardContent>
+      </Card>
+    </motion.div>
   )
 }
 
@@ -821,8 +834,8 @@ function VotesSection({
   setSearch: (value: string) => void
 }) {
   return (
-    <section className="space-y-5">
-      <div className="glass-card rounded-[2rem] p-5">
+    <section className="space-y-4 sm:space-y-5">
+      <div className="glass-card rounded-[1.75rem] p-4 sm:rounded-[2rem] sm:p-5">
         <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -833,7 +846,9 @@ function VotesSection({
                 </span>
               </div>
 
-              <h2 className="text-3xl font-black text-white">Mes votes</h2>
+              <h2 className="text-2xl font-black text-white sm:text-3xl">
+                Mes votes
+              </h2>
               <p className="mt-1 text-sm text-slate-400">
                 {votes.length} résultat(s) affiché(s). {validVotesCount} vote(s)
                 valide(s) sur {totalVotes} total.
@@ -846,7 +861,7 @@ function VotesSection({
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Rechercher projet ou équipe..."
-                className="h-12 rounded-2xl border-white/10 bg-white/5 pl-11 text-white placeholder:text-slate-500"
+                className="h-11 rounded-2xl border-white/10 bg-white/5 pl-11 text-white placeholder:text-slate-500 sm:h-12"
               />
             </div>
           </div>
@@ -910,14 +925,18 @@ function VotesSection({
         <EmptyVotes />
       ) : viewMode === "compact" ? (
         <div className="space-y-3">
-          {votes.map((vote) => (
-            <VoteCompactRow key={vote.id} vote={vote} />
+          {votes.map((vote, index) => (
+            <Reveal key={vote.id} delay={index * 0.03} y={14}>
+              <VoteCompactRow vote={vote} />
+            </Reveal>
           ))}
         </div>
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
-          {votes.map((vote) => (
-            <VoteProjectCard key={vote.id} vote={vote} />
+          {votes.map((vote, index) => (
+            <Reveal key={vote.id} delay={index * 0.03} y={16}>
+              <VoteProjectCard vote={vote} />
+            </Reveal>
           ))}
         </div>
       )}
@@ -976,7 +995,7 @@ function ViewButton({
 
 function EmptyVotes() {
   return (
-    <Card className="glass-card rounded-[2rem] border-white/10">
+    <Card className="glass-card rounded-[1.75rem] border-white/10 sm:rounded-[2rem]">
       <CardContent className="p-8 text-center">
         <Star className="mx-auto mb-4 h-12 w-12 text-cyan-200" />
         <h3 className="text-xl font-black text-white">Aucun vote trouvé</h3>
@@ -1001,12 +1020,14 @@ function VoteProjectCard({ vote }: { vote: VoteItem }) {
         whileHover={{ y: -5 }}
         className="glass-card group h-full overflow-hidden rounded-[2rem] border border-white/10 transition hover:border-cyan-300/30"
       >
-        <div className="relative h-36 bg-gradient-to-br from-slate-950 via-blue-950 to-violet-950">
+        <div className="relative h-36 bg-gradient-to-br from-slate-950 via-blue-950 to-violet-950 sm:h-40">
           {vote.project.thumbnailUrl ? (
-            <img
-              src={vote.project.thumbnailUrl}
-              alt={vote.project.projectName}
-              className="h-full w-full object-cover opacity-80 transition duration-500 group-hover:scale-105"
+            <Image
+                src={vote.project.thumbnailUrl}
+                alt={vote.project.projectName}
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover opacity-80 transition duration-500 group-hover:scale-105"
             />
           ) : (
             <div className="flex h-full items-center justify-center">
@@ -1030,8 +1051,8 @@ function VoteProjectCard({ vote }: { vote: VoteItem }) {
           </div>
         </div>
 
-        <div className="p-5">
-          <h3 className="line-clamp-1 text-xl font-black text-white">
+        <div className="p-4 sm:p-5">
+          <h3 className="line-clamp-1 text-lg font-black text-white sm:text-xl">
             {vote.project.projectName}
           </h3>
 
@@ -1039,12 +1060,12 @@ function VoteProjectCard({ vote }: { vote: VoteItem }) {
             {vote.project.team.name}
           </p>
 
-          <p className="mt-3 line-clamp-2 min-h-[48px] text-sm leading-6 text-slate-400">
+          <p className="mt-3 line-clamp-2 min-h-[44px] text-sm leading-6 text-slate-400 sm:min-h-[48px]">
             {vote.project.description || "Aucune description disponible."}
           </p>
 
           <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-4">
-            <div className="text-xs text-slate-500">
+            <div className="text-[11px] text-slate-500 sm:text-xs">
               Voté le {new Date(vote.createdAt).toLocaleString()}
             </div>
 
@@ -1065,8 +1086,8 @@ function VoteCompactRow({ vote }: { vote: VoteItem }) {
         whileHover={{ x: 4 }}
         className="glass-card group flex flex-col gap-4 rounded-[1.75rem] border border-white/10 p-4 transition hover:border-cyan-300/30 md:flex-row md:items-center"
       >
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-200">
-          <CheckCircle2 className="h-7 w-7" />
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-200 sm:h-14 sm:w-14">
+          <CheckCircle2 className="h-6 w-6 sm:h-7 sm:w-7" />
         </div>
 
         <div className="min-w-0 flex-1">
@@ -1093,14 +1114,14 @@ function VoteCompactRow({ vote }: { vote: VoteItem }) {
 
 function AccountSecurityCard({ profile }: { profile: UserProfile }) {
   return (
-    <Card className="glass-card rounded-[2rem] border-white/10">
-      <CardContent className="p-6 md:p-8">
-        <div className="mb-6 flex items-center gap-3">
+    <Card className="glass-card rounded-[1.75rem] border-white/10 transition hover:border-emerald-300/30 sm:rounded-[2rem]">
+      <CardContent className="p-5 sm:p-6 md:p-8">
+        <div className="mb-5 flex items-center gap-3 sm:mb-6">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-200">
             <ShieldCheck className="h-6 w-6" />
           </div>
           <div>
-            <h2 className="text-2xl font-black text-white">
+            <h2 className="text-xl font-black text-white sm:text-2xl">
               Sécurité du compte
             </h2>
             <p className="text-sm text-slate-500">
@@ -1148,25 +1169,28 @@ function ProfileControlCenter({
 }) {
   return (
     <Card className="glass-card neon-border rounded-[2rem] border-white/10">
-      <CardContent className="p-6">
+      <CardContent className="p-5 sm:p-6">
         <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200">
+          <motion.div
+            animate={{
+              scale: refreshing ? [1, 1.08, 1] : [1, 1.04, 1],
+              opacity: [0.75, 1, 0.75],
+            }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200"
+          >
             <Zap className="h-6 w-6" />
-          </div>
+          </motion.div>
           <div>
-            <h3 className="text-lg font-black text-white">
-              Centre profil
-            </h3>
-            <p className="text-xs text-slate-500">Session & crédits vote</p>
+            <h3 className="text-lg font-black text-white">Centre profil</h3>
+            <p className="text-[11px] text-slate-500 sm:text-xs">
+              Session & crédits vote
+            </p>
           </div>
         </div>
 
         <div className="space-y-3">
-          <ProfileStatusLine
-            label="Session"
-            value="Active"
-            active
-          />
+          <ProfileStatusLine label="Session" value="Active" active />
           <ProfileStatusLine
             label="Compte"
             value={profile.isBanned ? "Banni" : "Autorisé"}
@@ -1175,7 +1199,9 @@ function ProfileControlCenter({
           <ProfileStatusLine
             label="Votes restants"
             value={`${remainingVotes?.remainingVotes ?? "--"}/${remainingVotes?.maxVotesPerUser ?? "--"}`}
-            active={Boolean(remainingVotes && remainingVotes.remainingVotes > 0)}
+            active={Boolean(
+              remainingVotes && remainingVotes.remainingVotes > 0,
+            )}
           />
         </div>
 
@@ -1233,17 +1259,19 @@ function VotesSummaryCard({
 }) {
   const progress = remainingVotes
     ? Math.round(
-        (remainingVotes.usedVotes / remainingVotes.maxVotesPerUser) * 100
+        (remainingVotes.usedVotes / remainingVotes.maxVotesPerUser) * 100,
       )
     : 0
 
   return (
-    <Card className="glass-card rounded-[2rem] border-white/10">
-      <CardContent className="p-6">
+    <Card className="glass-card rounded-[1.75rem] border-white/10 transition hover:border-cyan-300/30 sm:rounded-[2rem]">
+      <CardContent className="p-5 sm:p-6">
         <div className="mb-5 flex items-center justify-between">
           <div>
             <p className="text-sm text-slate-400">Résumé vote</p>
-            <h2 className="text-2xl font-black text-white">Mes crédits</h2>
+            <h2 className="text-xl font-black text-white sm:text-2xl">
+              Mes crédits
+            </h2>
           </div>
 
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200">
@@ -1251,17 +1279,20 @@ function VotesSummaryCard({
           </div>
         </div>
 
-        <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-          <div className="text-5xl font-black text-white">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 sm:rounded-3xl sm:p-5">
+          <div className="text-4xl font-black text-white sm:text-5xl">
             {remainingVotes?.remainingVotes ?? "--"}
           </div>
           <div className="mt-1 text-sm text-slate-400">votes restants</div>
         </div>
 
-        <div className="mt-5 h-3 overflow-hidden rounded-full bg-white/10">
-          <div
+        <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/10 sm:mt-5">
+          <motion.div
+            initial={{ width: 0 }}
+            whileInView={{ width: `${progress}%` }}
+            viewport={{ once: true }}
+            transition={{ duration: 1, ease: "easeOut" }}
             className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-500"
-            style={{ width: `${progress}%` }}
           />
         </div>
 
@@ -1279,18 +1310,25 @@ function VotesSummaryCard({
 
 function ProfileIdentityCard({ profile }: { profile: UserProfile }) {
   return (
-    <Card className="glass-card rounded-[2rem] border-white/10">
-      <CardContent className="p-6">
+    <Card className="glass-card rounded-[1.75rem] border-white/10 transition hover:border-cyan-300/30 sm:rounded-[2rem]">
+      <CardContent className="p-5 sm:p-6">
         <p className="text-sm text-slate-400">Identité utilisateur</p>
 
         <div className="mt-4 flex items-center gap-4">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200">
             {profile.avatarUrl ? (
-              <img
+            //   <img
+            //     src={profile.avatarUrl}
+            //     alt={profile.name}
+            //     className="h-full w-full rounded-2xl object-cover"
+            //   />
+            <Image
                 src={profile.avatarUrl}
                 alt={profile.name}
-                className="h-full w-full rounded-2xl object-cover"
-              />
+                fill
+                sizes="64px"
+                className="rounded-2xl object-cover"
+            />
             ) : (
               <User className="h-8 w-8" />
             )}
@@ -1302,7 +1340,7 @@ function ProfileIdentityCard({ profile }: { profile: UserProfile }) {
           </div>
         </div>
 
-        <div className="mt-5 space-y-3">
+        <div className="mt-4 space-y-3 sm:mt-5">
           <ProfileLine label="Instagram ID" value={profile.instagramId} />
           <ProfileLine
             label="Statut"
@@ -1316,15 +1354,17 @@ function ProfileIdentityCard({ profile }: { profile: UserProfile }) {
 
 function LatestVoteCard({ latestVote }: { latestVote: VoteItem | null }) {
   return (
-    <Card className="glass-card rounded-[2rem] border-white/10">
-      <CardContent className="p-6">
+    <Card className="glass-card rounded-[1.75rem] border-white/10 transition hover:border-violet-300/30 sm:rounded-[2rem]">
+      <CardContent className="p-5 sm:p-6">
         <div className="mb-4 flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-200">
             <Layers3 className="h-6 w-6" />
           </div>
           <div>
             <h3 className="font-black text-white">Dernier vote</h3>
-            <p className="text-xs text-slate-500">Historique récent</p>
+            <p className="text-[11px] text-slate-500 sm:text-xs">
+              Historique récent
+            </p>
           </div>
         </div>
 
@@ -1334,7 +1374,10 @@ function LatestVoteCard({ latestVote }: { latestVote: VoteItem | null }) {
           </p>
         ) : (
           <Link href={`/projects/${latestVote.project.slug}`}>
-            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 transition hover:border-cyan-300/30">
+            <motion.div
+              whileHover={{ x: 4 }}
+              className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 transition hover:border-cyan-300/30"
+            >
               <h4 className="line-clamp-1 text-lg font-black text-white">
                 {latestVote.project.projectName}
               </h4>
@@ -1344,7 +1387,7 @@ function LatestVoteCard({ latestVote }: { latestVote: VoteItem | null }) {
               <p className="mt-3 text-xs text-slate-500">
                 {new Date(latestVote.createdAt).toLocaleString()}
               </p>
-            </div>
+            </motion.div>
           </Link>
         )}
       </CardContent>
@@ -1356,7 +1399,7 @@ function ProfileLine({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] p-3">
       <span className="text-sm text-slate-400">{label}</span>
-      <span className="max-w-[160px] truncate text-sm font-bold text-white">
+      <span className="max-w-[150px] truncate text-sm font-bold text-white sm:max-w-[160px]">
         {value}
       </span>
     </div>
@@ -1365,15 +1408,15 @@ function ProfileLine({ label, value }: { label: string; value: string }) {
 
 function RulesCard() {
   return (
-    <Card className="glass-card rounded-[2rem] border-white/10">
-      <CardContent className="p-6">
+    <Card className="glass-card rounded-[1.75rem] border-white/10 transition hover:border-emerald-300/30 sm:rounded-[2rem]">
+      <CardContent className="p-5 sm:p-6">
         <div className="mb-4 flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-200">
             <ShieldCheck className="h-6 w-6" />
           </div>
           <div>
             <h3 className="font-black text-white">Règles utilisateur</h3>
-            <p className="text-xs text-slate-500">Vote public</p>
+            <p className="text-[11px] text-slate-500 sm:text-xs">Vote public</p>
           </div>
         </div>
 
@@ -1395,10 +1438,10 @@ function LogoutCard({
   onLogout: () => void
 }) {
   return (
-    <Card className="glass-card rounded-[2rem] border-white/10">
-      <CardContent className="p-6">
+    <Card className="glass-card rounded-[1.75rem] border-white/10 transition hover:border-red-300/30 sm:rounded-[2rem]">
+      <CardContent className="p-5 sm:p-6">
         <h3 className="font-black text-white">Session</h3>
-        <p className="mt-2 text-sm leading-6 text-slate-400">
+        <p className="mt-2 text-xs leading-5 text-slate-400 sm:text-sm sm:leading-6">
           Vous pouvez vous déconnecter pour supprimer la session locale de vote.
         </p>
 
@@ -1435,13 +1478,16 @@ function InfoBox({
   value: string
 }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
-      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200">
+    <motion.div
+      whileHover={{ y: -4 }}
+      className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 transition hover:border-cyan-300/30"
+    >
+      <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200 sm:mb-3 sm:h-10 sm:w-10">
         {icon}
       </div>
       <div className="text-lg font-black text-white">{value}</div>
-      <div className="text-xs text-slate-500">{label}</div>
-    </div>
+      <div className="text-[11px] text-slate-500 sm:text-xs">{label}</div>
+    </motion.div>
   )
 }
 
@@ -1456,13 +1502,13 @@ function RuleLine({ children }: { children: ReactNode }) {
 
 function ProfileLoading() {
   return (
-    <main className="min-h-screen bg-[#050712] px-4 py-10 text-white">
+    <main className="min-h-screen bg-[#050712] px-4 py-8 text-white sm:py-10">
       <div className="mx-auto max-w-7xl">
         <div className="glass-card h-20 animate-pulse rounded-3xl" />
-        <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_420px]">
+        <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-8">
           <div className="space-y-6">
             <div className="glass-card h-80 animate-pulse rounded-[2.75rem]" />
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
               <div className="glass-card h-40 animate-pulse rounded-[2rem]" />
               <div className="glass-card h-40 animate-pulse rounded-[2rem]" />
               <div className="glass-card h-40 animate-pulse rounded-[2rem]" />
