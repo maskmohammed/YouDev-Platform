@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma"
 import { successResponse, errorResponse } from "@/lib/response"
 import { ERROR_CODES } from "@/lib/errors"
+import { REALTIME_EVENTS } from "@/lib/realtime/events"
+import { emitRealtimeEvent } from "@/lib/realtime/server-bus"
 
 function getClientIp(request: Request) {
   return (
@@ -12,10 +14,18 @@ function getClientIp(request: Request) {
 
 export async function POST(
   request: Request,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await context.params
+
+    if (!id) {
+      return errorResponse(
+        "ID projet obligatoire",
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+      )
+    }
 
     const project = await prisma.project.findUnique({
       where: {
@@ -38,13 +48,19 @@ export async function POST(
       return successResponse(
         {
           viewRecorded: false,
+          project: {
+            id: project.id,
+            slug: project.slug,
+            projectName: project.projectName,
+            viewCount: project.viewCount,
+          },
         },
-        "Les vues projet sont désactivées"
+        "Les vues projet sont désactivées",
       )
     }
 
     const ipAddress = getClientIp(request)
-    const userAgent = request.headers.get("user-agent")
+    const userAgent = request.headers.get("user-agent") || "unknown"
 
     await prisma.projectView.create({
       data: {
@@ -65,23 +81,41 @@ export async function POST(
       },
       select: {
         id: true,
+        slug: true,
+        projectName: true,
         viewCount: true,
       },
     })
+
+    const projectViewUpdatedEmitted = emitRealtimeEvent(
+      REALTIME_EVENTS.PROJECT_VIEW_UPDATED,
+      {
+        projectId: updatedProject.id,
+        projectSlug: updatedProject.slug,
+        projectName: updatedProject.projectName,
+        viewCount: updatedProject.viewCount,
+        timestamp: new Date().toISOString(),
+      },
+    )
+
+    console.log(
+      "[realtime] project-view.updated emitted:",
+      projectViewUpdatedEmitted,
+    )
 
     return successResponse(
       {
         viewRecorded: true,
         project: updatedProject,
       },
-      "Vue projet enregistrée"
+      "Vue projet enregistrée",
     )
   } catch (error) {
     return errorResponse(
       "Erreur lors de l’enregistrement de la vue",
       ERROR_CODES.INTERNAL_SERVER_ERROR,
       500,
-      error
+      error,
     )
   }
 }

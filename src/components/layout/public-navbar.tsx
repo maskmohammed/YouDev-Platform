@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import RealtimeStatusBadge from "@/components/realtime/realtime-status-badge"
 import {
   Code2,
   Home,
@@ -11,10 +12,10 @@ import {
   Sun,
   Trophy,
   User,
-  Zap,
+//   Zap,
 } from "lucide-react"
 
-import { Badge } from "@/components/ui/badge"
+// import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 
 type ThemeMode = "dark" | "light"
@@ -132,10 +133,9 @@ export default function PublicNavbar() {
             )}
           </Button>
 
-          <Badge className="hidden rounded-full bg-red-500/15 px-4 py-2 text-red-500 dark:text-red-200 md:flex">
-            <Zap className="mr-1 h-3 w-3" />
-            Live
-          </Badge>
+            <div className="hidden md:flex">
+                <RealtimeStatusBadge />
+            </div>
         </div>
       </nav>
 

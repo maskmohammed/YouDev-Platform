@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma"
 import { requireUser } from "@/lib/user-auth"
 import { successResponse, errorResponse } from "@/lib/response"
 import { ERROR_CODES } from "@/lib/errors"
+import { REALTIME_EVENTS } from "@/lib/realtime/events"
+import { emitRealtimeEvent } from "@/lib/realtime/server-bus"
 
 function getClientIp(request: Request) {
   return (
@@ -25,7 +27,7 @@ export async function POST(request: Request) {
     return errorResponse(
       "Utilisateur non authentifié",
       ERROR_CODES.UNAUTHENTICATED,
-      401
+      401,
     )
   }
 
@@ -41,7 +43,7 @@ export async function POST(request: Request) {
       return errorResponse(
         "projectId et editionId sont obligatoires",
         ERROR_CODES.VALIDATION_ERROR,
-        400
+        400,
       )
     }
 
@@ -66,7 +68,7 @@ export async function POST(request: Request) {
       return errorResponse(
         "Configuration concours introuvable",
         ERROR_CODES.NOT_FOUND,
-        404
+        404,
       )
     }
 
@@ -87,7 +89,7 @@ export async function POST(request: Request) {
       return errorResponse(
         "Les votes sont fermés",
         ERROR_CODES.VOTING_CLOSED,
-        403
+        403,
       )
     }
 
@@ -108,7 +110,7 @@ export async function POST(request: Request) {
       return errorResponse(
         "Les votes sont gelés",
         ERROR_CODES.VOTING_FROZEN,
-        403
+        403,
       )
     }
 
@@ -129,18 +131,14 @@ export async function POST(request: Request) {
       return errorResponse(
         "Utilisateur banni",
         ERROR_CODES.USER_BANNED,
-        403
+        403,
       )
     }
 
     const activeBan = await prisma.ban.findFirst({
       where: {
         status: "ACTIVE",
-        OR: [
-          { userId: user.id },
-          { ipAddress },
-          { deviceFingerprint },
-        ],
+        OR: [{ userId: user.id }, { ipAddress }, { deviceFingerprint }],
       },
     })
 
@@ -176,51 +174,36 @@ export async function POST(request: Request) {
         status: "PUBLISHED",
         deletedAt: null,
       },
+      select: {
+        id: true,
+        slug: true,
+        projectName: true,
+        editionId: true,
+      },
     })
 
-    // if (!project) {
-    //   await prisma.voteAttempt.create({
-    //     data: {
-    //       userId: user.id,
-    //       projectId,
-    //       editionId,
-    //       ipAddress,
-    //       userAgent,
-    //       deviceFingerprint,
-    //       allowed: false,
-    //       reason: "PROJECT_NOT_FOUND",
-    //     },
-    //   })
-
-    //   return errorResponse(
-    //     "Projet introuvable ou non publié",
-    //     ERROR_CODES.NOT_FOUND,
-    //     404
-    //   )
-    // }
-
     if (!project) {
-        await prisma.auditLog.create({
-            data: {
-            actorType: "USER",
-            userId: user.id,
-            action: "VOTE_REJECTED_PROJECT_NOT_FOUND",
-            targetType: "PROJECT",
-            targetId: projectId,
-            ipAddress,
-            userAgent,
-            metadata: {
-                editionId,
-                reason: "PROJECT_NOT_FOUND",
-            },
-            },
-        })
+      await prisma.auditLog.create({
+        data: {
+          actorType: "USER",
+          userId: user.id,
+          action: "VOTE_REJECTED_PROJECT_NOT_FOUND",
+          targetType: "PROJECT",
+          targetId: projectId,
+          ipAddress,
+          userAgent,
+          metadata: {
+            editionId,
+            reason: "PROJECT_NOT_FOUND",
+          },
+        },
+      })
 
-        return errorResponse(
-            "Projet introuvable ou non publié",
-            ERROR_CODES.NOT_FOUND,
-            404
-        )
+      return errorResponse(
+        "Projet introuvable ou non publié",
+        ERROR_CODES.NOT_FOUND,
+        404,
+      )
     }
 
     const userVotesCount = await prisma.vote.count({
@@ -248,7 +231,7 @@ export async function POST(request: Request) {
       return errorResponse(
         "Limite de votes atteinte",
         ERROR_CODES.VOTE_LIMIT_REACHED,
-        403
+        403,
       )
     }
 
@@ -277,7 +260,7 @@ export async function POST(request: Request) {
       return errorResponse(
         "Vous avez déjà voté pour ce projet",
         ERROR_CODES.ALREADY_VOTED_PROJECT,
-        409
+        409,
       )
     }
 
@@ -392,6 +375,37 @@ export async function POST(request: Request) {
       }
     })
 
+    const realtimeTimestamp = new Date().toISOString()
+
+    const voteCreatedEmitted = emitRealtimeEvent(REALTIME_EVENTS.VOTE_CREATED, {
+      voteId: result.vote.id,
+      editionId,
+      projectId,
+      projectSlug: project.slug,
+      projectName: project.projectName,
+      projectVoteCount: result.projectVoteCount,
+      timestamp: realtimeTimestamp,
+    })
+
+    const leaderboardUpdatedEmitted = emitRealtimeEvent(
+      REALTIME_EVENTS.LEADERBOARD_UPDATED,
+      {
+        editionId,
+        projectId,
+        projectSlug: project.slug,
+        projectName: project.projectName,
+        projectVoteCount: result.projectVoteCount,
+        remainingVotes: result.remainingVotes,
+        timestamp: realtimeTimestamp,
+      },
+    )
+
+    console.log("[realtime] vote.created emitted:", voteCreatedEmitted)
+    console.log(
+      "[realtime] leaderboard.updated emitted:",
+      leaderboardUpdatedEmitted,
+    )
+
     return successResponse(
       {
         voteId: result.vote.id,
@@ -399,14 +413,14 @@ export async function POST(request: Request) {
         projectVoteCount: result.projectVoteCount,
       },
       "Vote confirmé",
-      201
+      201,
     )
   } catch (error) {
     return errorResponse(
       "Erreur lors de la confirmation du vote",
       ERROR_CODES.INTERNAL_SERVER_ERROR,
       500,
-      error
+      error,
     )
   }
 }

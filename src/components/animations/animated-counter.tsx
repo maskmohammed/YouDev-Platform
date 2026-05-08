@@ -7,7 +7,7 @@ type AnimatedCounterProps = {
   value: number
   suffix?: string
   prefix?: string
-  duration?: number
+//   duration?: number
   className?: string
 }
 
@@ -15,7 +15,7 @@ export default function AnimatedCounter({
   value,
   suffix = "",
   prefix = "",
-  duration: _duration = 1.2,
+//   duration: _duration = 1.2,
   className,
 }: AnimatedCounterProps) {
   const ref = useRef<HTMLSpanElement | null>(null)

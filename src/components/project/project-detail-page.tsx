@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { AnimatePresence, motion } from "framer-motion"
 import {
@@ -25,6 +25,14 @@ import {
   XCircle,
   Zap,
 } from "lucide-react"
+
+import RealtimeUpdateToast from "@/components/realtime/realtime-update-toast"
+import { useLeaderboardRealtime } from "@/hooks/use-leaderboard-realtime"
+
+import type {
+  LeaderboardUpdatedPayload,
+  ProjectViewUpdatedPayload,
+} from "@/lib/realtime/events"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -106,6 +114,11 @@ type VoteFeedback = {
 }
 
 export default function ProjectDetailPage({ slug }: { slug: string }) {
+
+  const [realtimeToastVisible, setRealtimeToastVisible] = useState(false)
+  const [lastRealtimeProjectName, setLastRealtimeProjectName] = useState<
+    string | null
+  >(null)
   const [project, setProject] = useState<ProjectDetail | null>(null)
   const [config, setConfig] = useState<PublicConfig | null>(null)
 
@@ -180,6 +193,52 @@ export default function ProjectDetailPage({ slug }: { slug: string }) {
       setRefreshing(false)
     }
   }
+
+const handleRealtimeLeaderboardUpdate = useCallback(
+  (payload: LeaderboardUpdatedPayload) => {
+    if (!project) return
+
+    if (payload.projectId !== project.id && payload.projectSlug !== project.slug) {
+      return
+    }
+
+    setLastRealtimeProjectName(payload.projectName || project.projectName)
+    setRealtimeToastVisible(true)
+
+    void loadProject({
+      silent: true,
+      recordView: false,
+    })
+
+    window.setTimeout(() => {
+      setRealtimeToastVisible(false)
+    }, 4500)
+  },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [project],
+)
+
+const handleRealtimeProjectViewUpdate = useCallback(
+  (payload: ProjectViewUpdatedPayload) => {
+    if (!project) return
+
+    if (payload.projectId !== project.id && payload.projectSlug !== project.slug) {
+      return
+    }
+
+    void loadProject({
+      silent: true,
+      recordView: false,
+    })
+  },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [project],
+)
+
+useLeaderboardRealtime({
+  onLeaderboardUpdated: handleRealtimeLeaderboardUpdate,
+  onProjectViewUpdated: handleRealtimeProjectViewUpdate,
+})
 
   async function recordProjectView(projectId: string) {
     try {
@@ -493,6 +552,20 @@ export default function ProjectDetailPage({ slug }: { slug: string }) {
           </aside>
         </section>
       </section>
+
+        <RealtimeUpdateToast
+            visible={realtimeToastVisible}
+            title="Vote reçu sur ce projet"
+            message="Les statistiques de ce projet viennent d’être mises à jour en temps réel."
+            projectName={lastRealtimeProjectName || undefined}
+            onRefresh={() => {
+                void loadProject({
+                silent: true,
+                recordView: false,
+                })
+            }}
+            onClose={() => setRealtimeToastVisible(false)}
+        />
 
       <PublicFooter />
 

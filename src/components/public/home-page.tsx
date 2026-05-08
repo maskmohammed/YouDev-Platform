@@ -1,7 +1,10 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
+import { useLeaderboardRealtime } from "@/hooks/use-leaderboard-realtime"
 import { motion, AnimatePresence } from "framer-motion"
+import RealtimeUpdateToast from "@/components/realtime/realtime-update-toast"
+import type { LeaderboardUpdatedPayload } from "@/lib/realtime/events"
 import {
   ArrowRight,
   CheckCircle2,
@@ -106,6 +109,11 @@ export default function HomePage() {
     type: "",
     message: "",
   })
+
+    const [realtimeToastVisible, setRealtimeToastVisible] = useState(false)
+    const [lastRealtimeProjectName, setLastRealtimeProjectName] = useState<
+    string | null
+    >(null)
 
   async function loadData(options?: { silent?: boolean }) {
     try {
@@ -352,6 +360,29 @@ export default function HomePage() {
     }
   }
 
+    const handleRealtimeLeaderboardUpdate = useCallback(
+    (payload: LeaderboardUpdatedPayload) => {
+        setLastRealtimeProjectName(payload.projectName || null)
+        setRealtimeToastVisible(true)
+
+        void loadData({ silent: true })
+
+        window.setTimeout(() => {
+        setRealtimeToastVisible(false)
+        }, 4500)
+    },
+    [],
+    )
+
+    const handleRealtimeProjectViewUpdate = useCallback(() => {
+        void loadData({ silent: true })
+    }, [])
+
+    useLeaderboardRealtime({
+    onLeaderboardUpdated: handleRealtimeLeaderboardUpdate,
+    onProjectViewUpdated: handleRealtimeProjectViewUpdate,
+    })
+
     useEffect(() => {
     queueMicrotask(() => {
         void loadData()
@@ -455,6 +486,15 @@ export default function HomePage() {
           </Reveal>
         </section>
       </section>
+
+        <RealtimeUpdateToast
+            visible={realtimeToastVisible}
+            projectName={lastRealtimeProjectName || undefined}
+            onRefresh={() => {
+                void loadData({ silent: true })
+            }}
+            onClose={() => setRealtimeToastVisible(false)}
+        />
 
       <PublicFooter />
 

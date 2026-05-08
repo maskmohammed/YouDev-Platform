@@ -1,8 +1,11 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import Link from "next/link"
+import { useLeaderboardRealtime } from "@/hooks/use-leaderboard-realtime"
 import { AnimatePresence, motion } from "framer-motion"
+import RealtimeUpdateToast from "@/components/realtime/realtime-update-toast"
+import type { LeaderboardUpdatedPayload } from "@/lib/realtime/events"
 import {
   Activity,
   ArrowLeft,
@@ -93,61 +96,89 @@ export default function LeaderboardPage() {
   const [filterMode, setFilterMode] = useState<FilterMode>("all")
   const [sortMode, setSortMode] = useState<SortMode>("rank")
   const [viewMode, setViewMode] = useState<ViewMode>("cards")
-  const [autoRefresh] = useState(true)
+//   const [autoRefresh] = useState(true)
 
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState("")
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null)
 
-  async function loadData(options?: { silent?: boolean }) {
-    try {
-      if (options?.silent) {
-        setRefreshing(true)
-      } else {
-        setLoading(true)
-      }
+    const [realtimeToastVisible, setRealtimeToastVisible] = useState(false)
+    const [lastRealtimeProjectName, setLastRealtimeProjectName] = useState<
+    string | null
+    >(null)
 
-      setError("")
+    async function loadData(options?: { silent?: boolean }) {
+        try {
+        if (options?.silent) {
+            setRefreshing(true)
+        } else {
+            setLoading(true)
+        }
 
-      const [leaderboardResponse, topResponse, configResponse] =
-        await Promise.all([
-          fetch("/api/leaderboard", { cache: "no-store" }),
-          fetch("/api/leaderboard/top", { cache: "no-store" }),
-          fetch("/api/config/public", { cache: "no-store" }),
-        ])
+        setError("")
 
-      const leaderboardJson = await leaderboardResponse.json()
-      const topJson = await topResponse.json()
-      const configJson = await configResponse.json()
+        const [leaderboardResponse, topResponse, configResponse] =
+            await Promise.all([
+            fetch("/api/leaderboard", { cache: "no-store" }),
+            fetch("/api/leaderboard/top", { cache: "no-store" }),
+            fetch("/api/config/public", { cache: "no-store" }),
+            ])
 
-      if (!leaderboardJson.success) {
-        throw new Error(leaderboardJson.message || "Classement introuvable.")
-      }
+        const leaderboardJson = await leaderboardResponse.json()
+        const topJson = await topResponse.json()
+        const configJson = await configResponse.json()
 
-      if (!topJson.success) {
-        throw new Error(topJson.message || "Top qualifiés introuvable.")
-      }
+        if (!leaderboardJson.success) {
+            throw new Error(leaderboardJson.message || "Classement introuvable.")
+        }
 
-      if (!configJson.success) {
-        throw new Error(configJson.message || "Configuration introuvable.")
-      }
+        if (!topJson.success) {
+            throw new Error(topJson.message || "Top qualifiés introuvable.")
+        }
 
-      setLeaderboard(leaderboardJson.data.leaderboard || [])
-      setTopProjects(topJson.data.top || [])
-      setConfig(configJson.data)
-      setLastUpdatedAt(new Date())
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Impossible de charger le classement."
-      )
-    } finally {
-      setLoading(false)
-      setRefreshing(false)
+        if (!configJson.success) {
+            throw new Error(configJson.message || "Configuration introuvable.")
+        }
+
+        setLeaderboard(leaderboardJson.data.leaderboard || [])
+        setTopProjects(topJson.data.top || [])
+        setConfig(configJson.data)
+        setLastUpdatedAt(new Date())
+        } catch (err) {
+        setError(
+            err instanceof Error
+            ? err.message
+            : "Impossible de charger le classement."
+        )
+        } finally {
+        setLoading(false)
+        setRefreshing(false)
+        }
     }
-  }
+
+        const handleRealtimeLeaderboardUpdate = useCallback(
+            (payload: LeaderboardUpdatedPayload) => {
+                setLastRealtimeProjectName(payload.projectName || null)
+                setRealtimeToastVisible(true)
+
+                void loadData({ silent: true })
+
+                window.setTimeout(() => {
+                setRealtimeToastVisible(false)
+                }, 4500)
+            },
+            [],
+        )
+
+        const handleRealtimeProjectViewUpdate = useCallback(() => {
+            void loadData({ silent: true })
+        }, [])
+
+        useLeaderboardRealtime({
+        onLeaderboardUpdated: handleRealtimeLeaderboardUpdate,
+        onProjectViewUpdated: handleRealtimeProjectViewUpdate,
+        })
 
     useEffect(() => {
     queueMicrotask(() => {
@@ -155,15 +186,15 @@ export default function LeaderboardPage() {
     })
     }, [])
 
-  useEffect(() => {
-    if (!autoRefresh) return
+//   useEffect(() => {
+//     if (!autoRefresh) return
 
-    const interval = setInterval(() => {
-      loadData({ silent: true })
-    }, 15000)
+//     const interval = setInterval(() => {
+//       loadData({ silent: true })
+//     }, 15000)
 
-    return () => clearInterval(interval)
-  }, [autoRefresh])
+//     return () => clearInterval(interval)
+//   }, [autoRefresh])
 
   const filteredLeaderboard = useMemo(() => {
     const q = search.toLowerCase().trim()
@@ -239,7 +270,6 @@ export default function LeaderboardPage() {
                     averageVotes={averageVotes}
                     refreshing={refreshing}
                     lastUpdatedAt={lastUpdatedAt}
-                    autoRefresh={autoRefresh}
                     onRefresh={() => loadData({ silent: true })}
                 />
             </Reveal>
@@ -290,12 +320,11 @@ export default function LeaderboardPage() {
 
                 <aside className="space-y-6 lg:sticky lg:top-24 lg:h-fit">
                     <Reveal delay={0.1}>
-                    <OfficialStatusCard
-                    config={config}
-                    refreshing={refreshing}
-                    autoRefresh={autoRefresh}
-                    lastUpdatedAt={lastUpdatedAt}
-                    />
+                        <OfficialStatusCard
+                            config={config}
+                            refreshing={refreshing}
+                            lastUpdatedAt={lastUpdatedAt}
+                        />
                     </Reveal>
 
                     <Reveal delay={0.08}>
@@ -323,6 +352,15 @@ export default function LeaderboardPage() {
                 </aside>
             </section>
         </section>
+
+        <RealtimeUpdateToast
+            visible={realtimeToastVisible}
+            projectName={lastRealtimeProjectName || undefined}
+            onRefresh={() => {
+                void loadData({ silent: true })
+            }}
+            onClose={() => setRealtimeToastVisible(false)}
+        />
 
         <PublicFooter />
     </main>
@@ -431,7 +469,6 @@ function LeaderboardHero({
   averageVotes,
   refreshing,
   lastUpdatedAt,
-  autoRefresh,
   onRefresh,
 }: {
   config: PublicConfig | null
@@ -442,7 +479,6 @@ function LeaderboardHero({
   averageVotes: number
   refreshing: boolean
   lastUpdatedAt: Date | null
-  autoRefresh: boolean
   onRefresh: () => void
 }) {
   return (
@@ -467,8 +503,8 @@ function LeaderboardHero({
               Top {config?.qualifiedCount || 10} qualifié
             </Badge>
 
-            <Badge className="rounded-full bg-white/5 px-4 py-2 text-slate-300">
-              {autoRefresh ? "Auto-refresh actif" : "Auto-refresh désactivé"}
+            <Badge className="rounded-full bg-emerald-400/15 px-4 py-2 text-emerald-600 dark:text-emerald-200">
+                Socket.IO Live
             </Badge>
           </div>
 
@@ -1156,12 +1192,10 @@ function RowStat({
 function OfficialStatusCard({
   config,
   refreshing,
-  autoRefresh,
   lastUpdatedAt,
 }: {
   config: PublicConfig | null
   refreshing: boolean
-  autoRefresh: boolean
   lastUpdatedAt: Date | null
 }) {
   return (
@@ -1201,10 +1235,10 @@ function OfficialStatusCard({
           />
 
           <StatusLine
-            label="Auto-refresh"
-            value={autoRefresh ? "Activé" : "Désactivé"}
-            active={autoRefresh}
-          />
+            label="Temps réel"
+            value="Socket.IO actif"
+            active
+         />
 
           <StatusLine
             label="Dernière sync"
