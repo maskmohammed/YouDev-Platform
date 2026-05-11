@@ -1,6 +1,10 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import {
+  AdminToastViewport,
+  useAdminToasts,
+} from "@/components/admin/shared/admin-toast"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
@@ -10,21 +14,27 @@ import {
   ChevronLeft,
   ChevronRight,
   Edit3,
+  Moon,
+  Sun,
+  ImageIcon,
+  Film,
   Eye,
   Filter,
+  FolderPlus,
+  Info,
   LayoutDashboard,
   Loader2,
   Logs,
   Menu,
   Plus,
   RefreshCw,
+  Save,
   Search,
   Settings,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
   Trash2,
-  Trophy,
   Users,
   Video,
   Vote,
@@ -34,19 +44,28 @@ import {
 } from "lucide-react"
 
 import RealtimeStatusBadge from "@/components/realtime/realtime-status-badge"
+import AdminModal from "@/components/admin/shared/admin-modal"
+import {
+  AdminField,
+  AdminInput,
+  AdminSwitch,
+  AdminTextarea,
+} from "@/components/admin/shared/admin-form"
 import { useLeaderboardRealtime } from "@/hooks/use-leaderboard-realtime"
 
 type TeamItem = {
   id: string
+  editionId?: string
   name: string
   slug?: string
   logoUrl?: string | null
+  description?: string | null
   createdAt?: string
-  editionId?: string
 }
 
 type ProjectItem = {
   id: string
+  editionId?: string
   projectName: string
   slug?: string
   description?: string | null
@@ -58,12 +77,13 @@ type ProjectItem = {
   viewCount?: number
   createdAt?: string
   teamId?: string
+  technologies?: ProjectTechnologyItem[]
   team?: {
     id: string
     name: string
     slug?: string
     logoUrl?: string | null
-  }
+  } | null
 }
 
 type VoteItem = {
@@ -79,21 +99,92 @@ type VoteItem = {
   } | null
 }
 
+type TechnologyItem = {
+  id: string
+  name: string
+  slug: string
+  color?: string | null
+  iconUrl?: string | null
+  _count?: {
+    projects?: number
+  }
+}
+
+type ProjectTechnologyItem = {
+  technology: TechnologyItem
+}
+
+type UploadedProjectFile = {
+  kind: "thumbnail" | "video"
+  name: string
+  size: number
+  type: string
+  url: string
+}
+
 type AdminMe = {
   id?: string
   email?: string
   role?: string
 }
 
+type EditionItem = {
+  id: string
+  name?: string
+  year?: number
+  status?: string
+}
+
 type AdminTeamsState = {
   admin: AdminMe | null
+  edition: EditionItem | null
   teams: TeamItem[]
   projects: ProjectItem[]
   votes: VoteItem[]
+  technologies: TechnologyItem[]
 }
 
 type StatusFilter = "ALL" | "PUBLISHED" | "DRAFT"
 type VideoFilter = "ALL" | "WITH_VIDEO" | "MISSING_VIDEO"
+type ModalMode = "create" | "edit" | "view" | "delete" | null
+
+type TeamProjectRow = {
+  project: ProjectItem
+  team?: ProjectItem["team"]
+  published: boolean
+  hasVideo: boolean
+  votes: number
+}
+
+// type TeamProjectFormState = {
+//   teamName: string
+//   teamSlugPreview: string
+//   teamLogoUrl: string
+//   teamDescription: string
+//   projectName: string
+//   projectSlugPreview: string
+//   description: string
+//   thumbnailUrl: string
+//   videoUrl: string
+//   isPublished: boolean
+//   isFeatured: boolean
+// }
+
+type TeamProjectFormState = {
+  teamName: string
+  teamSlugPreview: string
+  teamLogoUrl: string
+  teamDescription: string
+  projectName: string
+  projectSlugPreview: string
+  description: string
+  thumbnailUrl: string
+  videoUrl: string
+  status: "DRAFT" | "PUBLISHED"
+  isPublished: boolean
+  isFeatured: boolean
+  technologyIds: string[]
+}
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ")
@@ -164,6 +255,32 @@ async function fetchOptionalApi(path: string, token: string) {
   }
 }
 
+async function mutateApi(
+  path: string,
+  token: string,
+  method: "POST" | "PATCH" | "DELETE",
+  body?: unknown,
+) {
+  const response = await fetch(path, {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: body ? JSON.stringify(body) : undefined,
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    const message = data?.message || `Erreur API ${response.status} sur ${path}`
+    throw new Error(message)
+  }
+
+  return data
+}
+
 function extractArray<T = unknown>(payload: unknown, keys: string[]): T[] {
   if (!payload || typeof payload !== "object") return []
 
@@ -212,6 +329,69 @@ function extractObject<T = unknown>(payload: unknown, keys: string[]): T | null 
   return null
 }
 
+function getObjectId(payload: unknown, keys: string[]) {
+  if (!payload || typeof payload !== "object") return null
+
+  const root = payload as Record<string, unknown>
+  const data =
+    root.data && typeof root.data === "object"
+      ? (root.data as Record<string, unknown>)
+      : null
+
+  for (const key of keys) {
+    const direct = root[key]
+    if (direct && typeof direct === "object" && "id" in direct) {
+      return String((direct as { id: string }).id)
+    }
+
+    const nested = data?.[key]
+    if (nested && typeof nested === "object" && "id" in nested) {
+      return String((nested as { id: string }).id)
+    }
+  }
+
+  if (data && "id" in data) {
+    return String((data as { id: string }).id)
+  }
+
+  return null
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+}
+
+function emptyToNull(value: string) {
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+function createEmptyForm(): TeamProjectFormState {
+  return {
+    teamName: "",
+    teamSlugPreview: "",
+    teamLogoUrl: "",
+    teamDescription: "",
+    projectName: "",
+    projectSlugPreview: "",
+    description: "",
+    thumbnailUrl: "",
+    videoUrl: "",
+    status: "DRAFT",
+    isPublished: false,
+    isFeatured: false,
+    technologyIds: [],
+  }
+}
+
 function formatNumber(value: number) {
   return new Intl.NumberFormat("fr-FR").format(value)
 }
@@ -246,14 +426,12 @@ function SidebarLink({
   label,
   icon,
   active = false,
-  badge,
   collapsed = false,
 }: {
   href: string
   label: string
   icon: React.ReactNode
   active?: boolean
-  badge?: string | number
   collapsed?: boolean
 }) {
   return (
@@ -282,12 +460,6 @@ function SidebarLink({
 
         {!collapsed && <span className="truncate">{label}</span>}
       </span>
-
-      {!collapsed && badge !== undefined && badge !== null && badge !== "" ? (
-        <span className="ml-3 rounded-full border border-red-400/20 bg-red-400/12 px-2 py-0.5 text-xs font-bold text-red-200">
-          {badge}
-        </span>
-      ) : null}
     </Link>
   )
 }
@@ -642,8 +814,48 @@ function AuthRequiredCard() {
   )
 }
 
+function ProjectStatusSelector({
+  value,
+  onChange,
+}: {
+  value: "DRAFT" | "PUBLISHED"
+  onChange: (value: "DRAFT" | "PUBLISHED") => void
+}) {
+  return (
+    <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/[0.035] p-1 sm:grid-cols-2">
+      <button
+        type="button"
+        onClick={() => onChange("DRAFT")}
+        className={cn(
+          "rounded-xl px-4 py-3 text-sm font-black transition",
+          value === "DRAFT"
+            ? "bg-amber-400/15 text-amber-100 ring-1 ring-amber-400/25"
+            : "text-slate-400 hover:bg-white/[0.05] hover:text-white",
+        )}
+      >
+        Brouillon
+      </button>
+
+      <button
+        type="button"
+        onClick={() => onChange("PUBLISHED")}
+        className={cn(
+          "rounded-xl px-4 py-3 text-sm font-black transition",
+          value === "PUBLISHED"
+            ? "bg-emerald-400/15 text-emerald-100 ring-1 ring-emerald-400/25"
+            : "text-slate-400 hover:bg-white/[0.05] hover:text-white",
+        )}
+      >
+        Publié
+      </button>
+    </div>
+  )
+}
+
 export default function AdminTeamsPage() {
   const router = useRouter()
+
+  const { toasts, toast, removeToast } = useAdminToasts()
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -660,12 +872,27 @@ export default function AdminTeamsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL")
   const [videoFilter, setVideoFilter] = useState<VideoFilter>("ALL")
 
+  const [modalMode, setModalMode] = useState<ModalMode>(null)
+  const [selectedRow, setSelectedRow] = useState<TeamProjectRow | null>(null)
+  const [modalSaving, setModalSaving] = useState(false)
+  const [modalError, setModalError] = useState<string | null>(null)
+  const [form, setForm] = useState<TeamProjectFormState>(() =>
+    createEmptyForm(),
+  )
+
+  const [uploadingThumbnail, setUploadingThumbnail] = useState(false)
+  const [uploadingVideo, setUploadingVideo] = useState(false)
+
   const [state, setState] = useState<AdminTeamsState>({
     admin: null,
+    edition: null,
     teams: [],
     projects: [],
     votes: [],
+    technologies: [],
   })
+
+
 
   const loadData = useCallback(
     async (options?: { silent?: boolean }) => {
@@ -687,20 +914,38 @@ export default function AdminTeamsPage() {
       setError(null)
 
       try {
-        const [adminResponse, teamsResponse, projectsResponse, votesResponse] =
-          await Promise.all([
+        const [
+            adminResponse,
+            activeEditionResponse,
+            teamsResponse,
+            projectsResponse,
+            votesResponse,
+            technologiesResponse,
+        ] = await Promise.all([
             fetchApi("/api/admin/auth/me", token),
+            fetchOptionalApi("/api/admin/editions/active", token),
             fetchApi("/api/admin/teams", token),
             fetchApi("/api/admin/projects", token),
             fetchOptionalApi("/api/admin/votes", token),
-          ])
+            fetchApi("/api/admin/technologies", token),
+        ])
 
         const admin = extractObject<AdminMe>(adminResponse, ["admin"])
+        const edition = activeEditionResponse
+          ? extractObject<EditionItem>(activeEditionResponse, ["edition"])
+          : null
+        
+        const technologies = extractArray<TechnologyItem>(technologiesResponse, [
+            "technologies",
+            "items",
+        ])
+
         const teams = extractArray<TeamItem>(teamsResponse, ["teams", "items"])
         const projects = extractArray<ProjectItem>(projectsResponse, [
           "projects",
           "items",
         ])
+
         const votes = votesResponse
           ? extractArray<VoteItem>(votesResponse, ["votes", "items"])
           : []
@@ -709,9 +954,11 @@ export default function AdminTeamsPage() {
 
         setState({
           admin,
+          edition,
           teams,
           projects,
           votes,
+          technologies,
         })
       } catch (err) {
         const message =
@@ -795,6 +1042,7 @@ export default function AdminTeamsPage() {
 
     for (const vote of state.votes) {
       if (vote.status && vote.status !== "VALID") continue
+
       const projectId = vote.projectId || vote.project?.id
       if (!projectId) continue
 
@@ -845,10 +1093,366 @@ export default function AdminTeamsPage() {
     })
   }, [rows, query, statusFilter, videoFilter])
 
+  const defaultEditionId = useMemo(() => {
+    return (
+      state.edition?.id ||
+      state.teams.find((team) => team.editionId)?.editionId ||
+      state.projects.find((project) => project.editionId)?.editionId ||
+      ""
+    )
+  }, [state.edition, state.teams, state.projects])
+
   const totalProjects = state.projects.length
   const publishedProjects = rows.filter((row) => row.published).length
   const missingVideos = rows.filter((row) => !row.hasVideo).length
   const totalVotes = rows.reduce((sum, row) => sum + row.votes, 0)
+
+  function updateForm<K extends keyof TeamProjectFormState>(
+    key: K,
+    value: TeamProjectFormState[K],
+  ) {
+    setForm((current) => ({
+      ...current,
+      [key]: value,
+    }))
+  }
+
+  function resetModal() {
+    setModalMode(null)
+    setSelectedRow(null)
+    setModalError(null)
+    setForm(createEmptyForm())
+  }
+
+  function closeModal() {
+    if (modalSaving) return
+    resetModal()
+  }
+
+  function openCreateModal() {
+    setSelectedRow(null)
+    setModalError(null)
+    setForm(createEmptyForm())
+    setModalMode("create")
+  }
+
+  function openViewModal(row: TeamProjectRow) {
+    setSelectedRow(row)
+    setModalError(null)
+    setModalMode("view")
+  }
+
+  function openEditModal(row: TeamProjectRow) {
+    setSelectedRow(row)
+    setModalError(null)
+
+    setForm({
+        teamName: row.team?.name || "",
+        teamSlugPreview: row.team?.slug || "",
+        teamLogoUrl: row.team?.logoUrl || "",
+        teamDescription: "",
+        projectName: row.project.projectName || "",
+        projectSlugPreview: row.project.slug || "",
+        description: row.project.description || "",
+        thumbnailUrl: row.project.thumbnailUrl || "",
+        videoUrl: row.project.videoUrl || "",
+        status:
+            row.project.status === "PUBLISHED" || row.published
+            ? "PUBLISHED"
+            : "DRAFT",
+        isPublished: row.project.status === "PUBLISHED" || row.published,
+        isFeatured: Boolean(row.project.isFeatured),
+        technologyIds:
+            row.project.technologies?.map((item) => item.technology.id) || [],
+    })
+
+    setModalMode("edit")
+  }
+
+  function openDeleteModal(row: TeamProjectRow) {
+    setSelectedRow(row)
+    setModalError(null)
+    setModalMode("delete")
+  }
+
+  function toggleTechnology(technologyId: string) {
+  setForm((current) => {
+    const exists = current.technologyIds.includes(technologyId)
+
+    return {
+      ...current,
+      technologyIds: exists
+        ? current.technologyIds.filter((id) => id !== technologyId)
+        : [...current.technologyIds, technologyId],
+    }
+  })
+}
+
+async function saveProjectTechnologies(projectId: string) {
+  const token = getStoredAdminToken()
+
+  if (!token) {
+    setAuthMissing(true)
+    return
+  }
+
+  await mutateApi(`/api/admin/projects/${projectId}/technologies`, token, "POST", {
+    technologyIds: form.technologyIds,
+  })
+}
+
+async function handleProjectFileUpload(
+  kind: "thumbnail" | "video",
+  file: File | null,
+) {
+  if (!file) return
+
+  const token = getStoredAdminToken()
+
+  if (!token) {
+    setAuthMissing(true)
+    return
+  }
+
+  const isThumbnail = kind === "thumbnail"
+
+  if (isThumbnail) setUploadingThumbnail(true)
+  else setUploadingVideo(true)
+
+  setModalError(null)
+
+  try {
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("kind", kind)
+
+    const response = await fetch("/api/admin/upload", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    })
+
+    const data = await response.json().catch(() => null)
+
+    if (!response.ok) {
+      throw new Error(data?.message || "Erreur lors de l’upload du fichier.")
+    }
+
+    const uploadedFile =
+      extractObject<UploadedProjectFile>(data, ["file"]) || null
+
+    if (!uploadedFile?.url) {
+      throw new Error("Upload réussi, mais URL du fichier introuvable.")
+    }
+
+    if (kind === "thumbnail") {
+      updateForm("thumbnailUrl", uploadedFile.url)
+      toast.success("Thumbnail uploadé", "L’image du projet a été ajoutée.")
+    } else {
+      updateForm("videoUrl", uploadedFile.url)
+      toast.success("Vidéo uploadée", "La vidéo du projet a été ajoutée.")
+    }
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Erreur lors de l’upload."
+
+    setModalError(message)
+    toast.error("Erreur upload", message)
+  } finally {
+    if (isThumbnail) setUploadingThumbnail(false)
+    else setUploadingVideo(false)
+  }
+}
+
+  async function handleCreate() {
+    const token = getStoredAdminToken()
+
+    if (!token) {
+      setAuthMissing(true)
+      return
+    }
+
+    if (!defaultEditionId) {
+      setModalError("Impossible de trouver l’édition active.")
+      return
+    }
+
+    if (!form.teamName.trim()) {
+      setModalError("Le nom de l’équipe est obligatoire.")
+      return
+    }
+
+    if (!form.projectName.trim()) {
+      setModalError("Le nom du projet est obligatoire pour apparaître dans cette page.")
+      return
+    }
+
+    setModalSaving(true)
+    setModalError(null)
+
+    try {
+      const teamResponse = await mutateApi("/api/admin/teams", token, "POST", {
+        editionId: defaultEditionId,
+        name: form.teamName.trim(),
+        logoUrl: emptyToNull(form.teamLogoUrl),
+        description: emptyToNull(form.teamDescription),
+      })
+
+      const teamId = getObjectId(teamResponse, ["team"])
+
+      if (!teamId) {
+        throw new Error("Équipe créée, mais ID introuvable dans la réponse API.")
+      }
+
+      const projectResponse = await mutateApi("/api/admin/projects", token, "POST", {
+        editionId: defaultEditionId,
+        teamId,
+        projectName: form.projectName.trim(),
+        description: emptyToNull(form.description),
+        status: form.status,
+        isPublished: form.status === "PUBLISHED",
+        isFeatured: form.isFeatured,
+      })
+
+      const projectId = getObjectId(projectResponse, ["project"])
+
+      if (projectId && form.technologyIds.length > 0) {
+        await mutateApi(`/api/admin/projects/${projectId}/technologies`, token, "POST", {
+            technologyIds: form.technologyIds,
+        })
+      }
+
+      if (projectId && (form.thumbnailUrl.trim() || form.videoUrl.trim())) {
+        await mutateApi(`/api/admin/projects/${projectId}`, token, "PATCH", {
+          projectName: form.projectName.trim(),
+          description: emptyToNull(form.description),
+          thumbnailUrl: emptyToNull(form.thumbnailUrl),
+          videoUrl: emptyToNull(form.videoUrl),
+        //   isPublished: form.isPublished,
+          isFeatured: form.isFeatured,
+          status: form.status,
+          isPublished: form.status === "PUBLISHED",
+        })
+      }
+
+      resetModal()
+      await loadData({ silent: true })
+      toast.success(
+        "Équipe créée",
+        "L’équipe et son projet ont été ajoutés avec succès.",
+        )
+    } catch (err) {
+      setModalError(
+        err instanceof Error
+          ? err.message
+          : "Erreur lors de la création.",
+      )
+
+      toast.error(
+        "Erreur création",
+        err instanceof Error ? err.message : "Impossible de créer l’équipe.",
+        )
+    } finally {
+      setModalSaving(false)
+    }
+  }
+
+  async function handleEdit() {
+    const token = getStoredAdminToken()
+
+    if (!token) {
+      setAuthMissing(true)
+      return
+    }
+
+    if (!selectedRow) {
+      setModalError("Aucun projet sélectionné.")
+      return
+    }
+
+    if (!form.projectName.trim()) {
+      setModalError("Le nom du projet est obligatoire.")
+      return
+    }
+
+    setModalSaving(true)
+    setModalError(null)
+
+    try {
+      await mutateApi(
+        `/api/admin/projects/${selectedRow.project.id}`,
+        token,
+        "PATCH",
+        {
+          projectName: form.projectName.trim(),
+          description: emptyToNull(form.description),
+          thumbnailUrl: emptyToNull(form.thumbnailUrl),
+          videoUrl: emptyToNull(form.videoUrl),
+          status: form.status,
+          isPublished: form.status === "PUBLISHED",
+          isFeatured: form.isFeatured,
+        },
+      )
+
+      await saveProjectTechnologies(selectedRow.project.id)
+
+      resetModal()
+      await loadData({ silent: true })
+
+      toast.success(
+        "Projet modifié",
+        "Les informations du projet ont été enregistrées avec succès.",
+        )
+    } catch (err) {
+        const message = err instanceof Error ? err.message : "Erreur lors de la modification."
+        setModalError(message)
+        toast.error("Erreur modification", message)
+    } finally {
+      setModalSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    const token = getStoredAdminToken()
+
+    if (!token) {
+      setAuthMissing(true)
+      return
+    }
+
+    if (!selectedRow) {
+      setModalError("Aucun projet sélectionné.")
+      return
+    }
+
+    setModalSaving(true)
+    setModalError(null)
+
+    try {
+      await mutateApi(
+        `/api/admin/projects/${selectedRow.project.id}`,
+        token,
+        "DELETE",
+      )
+
+      resetModal()
+      await loadData({ silent: true })
+
+      toast.success(
+        "Projet archivé",
+        "Le projet a été archivé avec succès.",
+        )
+    } catch (err) {
+        const message = err instanceof Error ? err.message : "Erreur lors de la suppression."
+
+        setModalError(message)
+        toast.error("Erreur suppression", message)
+    } finally {
+      setModalSaving(false)
+    }
+  }
 
   if (loading) return <LoadingScreen />
 
@@ -940,13 +1544,14 @@ export default function AdminTeamsPage() {
                 Actualiser
               </button>
 
-              <Link
-                href="/admin/teams/new"
+              <button
+                type="button"
+                onClick={openCreateModal}
                 className="inline-flex items-center rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-black text-slate-950 shadow-[0_18px_60px_rgba(34,211,238,0.22)] transition hover:bg-cyan-300"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Nouvelle équipe
-              </Link>
+              </button>
             </div>
           </div>
 
@@ -1118,7 +1723,7 @@ export default function AdminTeamsPage() {
                   </div>
                 </div>
 
-                <div className="overflow-hidden rounded-[28px] border border-white/8">
+                <div className="overflow-x-auto rounded-[28px] border border-white/8">
                   <div className="hidden grid-cols-[70px_1.5fr_1fr_130px_140px_90px_90px_160px] border-b border-white/8 bg-white/[0.04] px-5 py-4 text-xs font-black uppercase tracking-[0.16em] text-slate-400 xl:grid">
                     <div>#</div>
                     <div>Équipe / projet</div>
@@ -1189,26 +1794,27 @@ export default function AdminTeamsPage() {
                           </div>
 
                           <div className="flex flex-wrap gap-2">
-                            {row.project.slug ? (
-                              <Link
-                                href={`/projects/${row.project.slug}`}
-                                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-400/20 hover:bg-cyan-400/10 hover:text-cyan-100"
-                                title="Voir public"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Link>
-                            ) : null}
-
-                            <Link
-                              href={`/admin/teams/${row.team?.id || row.project.teamId || row.project.id}`}
-                              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-amber-400/20 hover:bg-amber-400/10 hover:text-amber-100"
-                              title="Éditer"
+                            <button
+                              type="button"
+                              onClick={() => openViewModal(row)}
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-400/20 hover:bg-cyan-400/10 hover:text-cyan-100"
+                              title="Visualiser"
                             >
-                              <Edit3 className="h-4 w-4" />
-                            </Link>
+                              <Eye className="h-4 w-4" />
+                            </button>
 
                             <button
                               type="button"
+                              onClick={() => openEditModal(row)}
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-amber-400/20 hover:bg-amber-400/10 hover:text-amber-100"
+                              title="Modifier"
+                            >
+                              <Edit3 className="h-4 w-4" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => openDeleteModal(row)}
                               className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-red-400/15 bg-red-400/10 text-red-200 transition hover:bg-red-400/15"
                               title="Supprimer"
                             >
@@ -1225,6 +1831,761 @@ export default function AdminTeamsPage() {
           )}
         </main>
       </div>
+
+      <AdminModal
+        open={modalMode === "create"}
+        title="Nouvelle équipe"
+        description="Crée une équipe et son projet associé avec tes routes API actuelles."
+        onClose={closeModal}
+        size="xl"
+        icon={<FolderPlus className="h-5 w-5" />}
+        footer={
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={closeModal}
+              disabled={modalSaving}
+              className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-black text-white transition hover:bg-white/[0.08] disabled:opacity-60"
+            >
+              Annuler
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCreate}
+              disabled={modalSaving}
+              className="inline-flex items-center justify-center rounded-2xl bg-cyan-400 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-cyan-300 disabled:opacity-60"
+            >
+              {modalSaving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              Créer
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-6">
+          {modalError ? (
+            <div className="rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">
+              {modalError}
+            </div>
+          ) : null}
+
+          <div className="grid gap-5 lg:grid-cols-3">
+            <AdminField label="Nom équipe">
+              <AdminInput
+                value={form.teamName}
+                onChange={(event) => {
+                  updateForm("teamName", event.target.value)
+                  updateForm("teamSlugPreview", slugify(event.target.value))
+                }}
+                placeholder="Ex: CodeStorm"
+              />
+            </AdminField>
+
+            <AdminField
+              label="Slug équipe"
+              hint="Généré automatiquement par l’API actuelle."
+            >
+              <AdminInput
+                value={form.teamSlugPreview}
+                disabled
+                className="opacity-60"
+                placeholder="codestorm"
+              />
+            </AdminField>
+
+            <AdminField label="Logo URL">
+              <AdminInput
+                value={form.teamLogoUrl}
+                onChange={(event) =>
+                  updateForm("teamLogoUrl", event.target.value)
+                }
+                placeholder="https://..."
+              />
+            </AdminField>
+
+            <div className="lg:col-span-3">
+              <AdminField label="Description équipe">
+                <AdminTextarea
+                  value={form.teamDescription}
+                  onChange={(event) =>
+                    updateForm("teamDescription", event.target.value)
+                  }
+                  placeholder="Description interne de l’équipe..."
+                />
+              </AdminField>
+            </div>
+          </div>
+
+          <div className="rounded-[26px] border border-white/8 bg-white/[0.025] p-5">
+            <div className="mb-5">
+              <h3 className="text-lg font-black text-white">Projet associé</h3>
+              <p className="text-sm text-slate-400">
+                Le projet est obligatoire pour apparaître directement dans cette page.
+              </p>
+            </div>
+
+            <div className="grid gap-5 lg:grid-cols-2">
+              <AdminField label="Nom projet">
+                <AdminInput
+                  value={form.projectName}
+                  onChange={(event) => {
+                    updateForm("projectName", event.target.value)
+                    updateForm("projectSlugPreview", slugify(event.target.value))
+                  }}
+                  placeholder="Ex: EcoTrack AI"
+                />
+              </AdminField>
+
+              <AdminField
+                label="Slug projet"
+                hint="Généré automatiquement par l’API actuelle."
+              >
+                <AdminInput
+                  value={form.projectSlugPreview}
+                  disabled
+                  className="opacity-60"
+                  placeholder="eco-track-ai"
+                />
+              </AdminField>
+
+              <div className="lg:col-span-2">
+                <AdminField label="Description projet">
+                  <AdminTextarea
+                    value={form.description}
+                    onChange={(event) =>
+                      updateForm("description", event.target.value)
+                    }
+                    placeholder="Description courte du projet..."
+                  />
+                </AdminField>
+              </div>
+
+              <AdminField label="Thumbnail projet">
+                <div className="space-y-3">
+                    <label className="flex cursor-pointer items-center justify-center rounded-2xl border border-dashed border-cyan-400/25 bg-cyan-400/8 px-4 py-5 text-center transition hover:bg-cyan-400/12">
+                    <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(event) =>
+                        handleProjectFileUpload(
+                            "thumbnail",
+                            event.target.files?.[0] || null,
+                        )
+                        }
+                    />
+
+                    <span className="flex flex-col items-center gap-2">
+                        {uploadingThumbnail ? (
+                        <Loader2 className="h-6 w-6 animate-spin text-cyan-200" />
+                        ) : (
+                        <ImageIcon className="h-6 w-6 text-cyan-200" />
+                        )}
+
+                        <span className="text-sm font-black text-white">
+                        {uploadingThumbnail ? "Upload en cours..." : "Uploader une image"}
+                        </span>
+
+                        <span className="text-xs text-slate-500">
+                        JPG, PNG, WEBP ou GIF
+                        </span>
+                    </span>
+                    </label>
+
+                    {form.thumbnailUrl ? (
+                    <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]">
+                        <img
+                        src={form.thumbnailUrl}
+                        alt="Preview thumbnail"
+                        className="h-40 w-full object-cover"
+                        />
+                    </div>
+                    ) : null}
+
+                    <AdminInput
+                    value={form.thumbnailUrl}
+                    onChange={(event) => updateForm("thumbnailUrl", event.target.value)}
+                    placeholder="/uploads/projects/thumbnails/..."
+                    />
+                </div>
+                </AdminField>
+
+                <AdminField label="Vidéo projet">
+                <div className="space-y-3">
+                    <label className="flex cursor-pointer items-center justify-center rounded-2xl border border-dashed border-violet-400/25 bg-violet-400/8 px-4 py-5 text-center transition hover:bg-violet-400/12">
+                    <input
+                        type="file"
+                        accept="video/*"
+                        className="hidden"
+                        onChange={(event) =>
+                        handleProjectFileUpload("video", event.target.files?.[0] || null)
+                        }
+                    />
+
+                    <span className="flex flex-col items-center gap-2">
+                        {uploadingVideo ? (
+                        <Loader2 className="h-6 w-6 animate-spin text-violet-200" />
+                        ) : (
+                        <Film className="h-6 w-6 text-violet-200" />
+                        )}
+
+                        <span className="text-sm font-black text-white">
+                        {uploadingVideo ? "Upload en cours..." : "Uploader une vidéo"}
+                        </span>
+
+                        <span className="text-xs text-slate-500">
+                        MP4, WEBM, MOV, AVI ou MKV
+                        </span>
+                    </span>
+                    </label>
+
+                    {form.videoUrl ? (
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+                        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                        Vidéo actuelle
+                        </p>
+                        <p className="mt-2 break-all text-sm text-slate-300">
+                        {form.videoUrl}
+                        </p>
+                    </div>
+                    ) : null}
+
+                    <AdminInput
+                    value={form.videoUrl}
+                    onChange={(event) => updateForm("videoUrl", event.target.value)}
+                    placeholder="/uploads/projects/videos/..."
+                    />
+                </div>
+                </AdminField>
+
+              {/* <AdminSwitch
+                checked={form.status === "PUBLISHED"}
+                onChange={(value) => {
+                    updateForm("status", value ? "PUBLISHED" : "DRAFT")
+                    updateForm("isPublished", value)
+                }}
+                label="Publier le projet"
+                description="Le projet sera visible côté public."
+               /> */}
+
+              <AdminSwitch
+                checked={form.isFeatured}
+                onChange={(value) => updateForm("isFeatured", value)}
+                label="Mettre en avant"
+                description="Projet affiché comme important."
+              />
+
+              <AdminField label="Statut du projet">
+                <ProjectStatusSelector
+                    value={form.status}
+                    onChange={(value) => {
+                    updateForm("status", value)
+                    updateForm("isPublished", value === "PUBLISHED")
+                    }}
+                />
+              </AdminField>
+
+              <div className="rounded-[24px] border border-white/8 bg-black/15 p-4 lg:col-span-2">
+                <div className="mb-4">
+                    <h4 className="font-black text-white">Technologies</h4>
+                    <p className="mt-1 text-sm text-slate-400">
+                    Sélectionne les technologies utilisées par ce projet.
+                    </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                    {state.technologies.length === 0 ? (
+                    <p className="text-sm text-slate-500">Aucune technologie disponible.</p>
+                    ) : (
+                    state.technologies.map((technology) => {
+                        const active = form.technologyIds.includes(technology.id)
+
+                        return (
+                        <button
+                            key={technology.id}
+                            type="button"
+                            onClick={() => toggleTechnology(technology.id)}
+                            className={cn(
+                            "rounded-full border px-3 py-2 text-xs font-black transition",
+                            active
+                                ? "border-cyan-400/40 bg-cyan-400/18 text-cyan-100"
+                                : "border-white/10 bg-white/[0.035] text-slate-300 hover:bg-white/[0.06]",
+                            )}
+                        >
+                            {technology.name}
+                        </button>
+                        )
+                    })
+                    )}
+                </div>
+                </div>
+            </div>
+          </div>
+        </div>
+      </AdminModal>
+
+      <AdminModal
+        open={modalMode === "edit"}
+        title="Modifier projet"
+        description="L’équipe est affichée en lecture seule. Ton API actuelle modifie le projet via PATCH /api/admin/projects/[id]."
+        onClose={closeModal}
+        size="xl"
+        icon={<Edit3 className="h-5 w-5" />}
+        footer={
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={closeModal}
+              disabled={modalSaving}
+              className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-black text-white transition hover:bg-white/[0.08] disabled:opacity-60"
+            >
+              Annuler
+            </button>
+
+            <button
+              type="button"
+              onClick={handleEdit}
+              disabled={modalSaving}
+              className="inline-flex items-center justify-center rounded-2xl bg-cyan-400 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-cyan-300 disabled:opacity-60"
+            >
+              {modalSaving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              Enregistrer
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-6">
+          {modalError ? (
+            <div className="rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">
+              {modalError}
+            </div>
+          ) : null}
+
+          <div className="grid gap-5 lg:grid-cols-3">
+            <AdminField label="Nom équipe">
+              <AdminInput value={form.teamName} disabled className="opacity-60" />
+            </AdminField>
+
+            <AdminField label="Slug équipe">
+              <AdminInput
+                value={form.teamSlugPreview}
+                disabled
+                className="opacity-60"
+              />
+            </AdminField>
+
+            <AdminField label="Logo équipe">
+              <AdminInput
+                value={form.teamLogoUrl}
+                disabled
+                className="opacity-60"
+              />
+            </AdminField>
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-2">
+            <AdminField label="Nom projet">
+              <AdminInput
+                value={form.projectName}
+                onChange={(event) => {
+                  updateForm("projectName", event.target.value)
+                  updateForm("projectSlugPreview", slugify(event.target.value))
+                }}
+              />
+            </AdminField>
+
+            <AdminField
+              label="Slug projet"
+              hint="Ton API recalcule le slug automatiquement à partir du nom."
+            >
+              <AdminInput
+                value={form.projectSlugPreview}
+                disabled
+                className="opacity-60"
+              />
+            </AdminField>
+
+            <div className="lg:col-span-2">
+              <AdminField label="Description projet">
+                <AdminTextarea
+                  value={form.description}
+                  onChange={(event) =>
+                    updateForm("description", event.target.value)
+                  }
+                />
+              </AdminField>
+            </div>
+
+            {/* <AdminField label="Thumbnail URL">
+              <AdminInput
+                value={form.thumbnailUrl}
+                onChange={(event) =>
+                  updateForm("thumbnailUrl", event.target.value)
+                }
+              />
+            </AdminField>
+
+            <AdminField label="Vidéo URL">
+              <AdminInput
+                value={form.videoUrl}
+                onChange={(event) => updateForm("videoUrl", event.target.value)}
+              />
+            </AdminField> */}
+            <AdminField label="Thumbnail projet">
+            <div className="space-y-3">
+                <label className="flex cursor-pointer items-center justify-center rounded-2xl border border-dashed border-cyan-400/25 bg-cyan-400/8 px-4 py-5 text-center transition hover:bg-cyan-400/12">
+                <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(event) =>
+                    handleProjectFileUpload(
+                        "thumbnail",
+                        event.target.files?.[0] || null,
+                    )
+                    }
+                />
+
+                <span className="flex flex-col items-center gap-2">
+                    {uploadingThumbnail ? (
+                    <Loader2 className="h-6 w-6 animate-spin text-cyan-200" />
+                    ) : (
+                    <ImageIcon className="h-6 w-6 text-cyan-200" />
+                    )}
+
+                    <span className="text-sm font-black text-white">
+                    {uploadingThumbnail ? "Upload en cours..." : "Uploader une image"}
+                    </span>
+
+                    <span className="text-xs text-slate-500">
+                    JPG, PNG, WEBP ou GIF
+                    </span>
+                </span>
+                </label>
+
+                {form.thumbnailUrl ? (
+                <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]">
+                    <img
+                    src={form.thumbnailUrl}
+                    alt="Preview thumbnail"
+                    className="h-40 w-full object-cover"
+                    />
+                </div>
+                ) : null}
+
+                <AdminInput
+                value={form.thumbnailUrl}
+                onChange={(event) => updateForm("thumbnailUrl", event.target.value)}
+                placeholder="/uploads/projects/thumbnails/..."
+                />
+            </div>
+            </AdminField>
+
+            <AdminField label="Vidéo projet">
+            <div className="space-y-3">
+                <label className="flex cursor-pointer items-center justify-center rounded-2xl border border-dashed border-violet-400/25 bg-violet-400/8 px-4 py-5 text-center transition hover:bg-violet-400/12">
+                <input
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={(event) =>
+                    handleProjectFileUpload("video", event.target.files?.[0] || null)
+                    }
+                />
+
+                <span className="flex flex-col items-center gap-2">
+                    {uploadingVideo ? (
+                    <Loader2 className="h-6 w-6 animate-spin text-violet-200" />
+                    ) : (
+                    <Film className="h-6 w-6 text-violet-200" />
+                    )}
+
+                    <span className="text-sm font-black text-white">
+                    {uploadingVideo ? "Upload en cours..." : "Uploader une vidéo"}
+                    </span>
+
+                    <span className="text-xs text-slate-500">
+                    MP4, WEBM, MOV, AVI ou MKV
+                    </span>
+                </span>
+                </label>
+
+                {form.videoUrl ? (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                    Vidéo actuelle
+                    </p>
+                    <p className="mt-2 break-all text-sm text-slate-300">
+                    {form.videoUrl}
+                    </p>
+                </div>
+                ) : null}
+
+                <AdminInput
+                value={form.videoUrl}
+                onChange={(event) => updateForm("videoUrl", event.target.value)}
+                placeholder="/uploads/projects/videos/..."
+                />
+            </div>
+            </AdminField>
+
+            {/* <AdminSwitch
+              checked={form.isPublished}
+              onChange={(value) => updateForm("isPublished", value)}
+              label="Publié"
+              description="Contrôle la visibilité publique du projet."
+            />
+
+            <AdminSwitch
+              checked={form.isFeatured}
+              onChange={(value) => updateForm("isFeatured", value)}
+              label="Mis en avant"
+              description="Affiche le projet comme projet important."
+            /> */}
+
+            <AdminField label="Statut du projet">
+                <ProjectStatusSelector
+                    value={form.status}
+                    onChange={(value) => {
+                    updateForm("status", value)
+                    updateForm("isPublished", value === "PUBLISHED")
+                    }}
+                />
+            </AdminField>
+
+            <AdminSwitch
+            checked={form.isFeatured}
+            onChange={(value) => updateForm("isFeatured", value)}
+            label="Mis en avant"
+            description="Affiche le projet comme projet important."
+            />
+
+            <div className="rounded-[24px] border border-white/8 bg-black/15 p-4 lg:col-span-2">
+                <div className="mb-4">
+                    <h4 className="font-black text-white">Technologies</h4>
+                    <p className="mt-1 text-sm text-slate-400">
+                    Sélectionne les technologies utilisées par ce projet.
+                    </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                    {state.technologies.length === 0 ? (
+                    <p className="text-sm text-slate-500">Aucune technologie disponible.</p>
+                    ) : (
+                    state.technologies.map((technology) => {
+                        const active = form.technologyIds.includes(technology.id)
+
+                        return (
+                        <button
+                            key={technology.id}
+                            type="button"
+                            onClick={() => toggleTechnology(technology.id)}
+                            className={cn(
+                            "rounded-full border px-3 py-2 text-xs font-black transition",
+                            active
+                                ? "border-cyan-400/40 bg-cyan-400/18 text-cyan-100"
+                                : "border-white/10 bg-white/[0.035] text-slate-300 hover:bg-white/[0.06]",
+                            )}
+                        >
+                            {technology.name}
+                        </button>
+                        )
+                    })
+                    )}
+                </div>
+                </div>
+          </div>
+        </div>
+      </AdminModal>
+
+      <AdminModal
+        open={modalMode === "view"}
+        title="Détails équipe / projet"
+        description="Vue rapide des informations importantes."
+        onClose={closeModal}
+        size="lg"
+        icon={<Info className="h-5 w-5" />}
+        footer={
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={closeModal}
+              className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-black text-white transition hover:bg-white/[0.08]"
+            >
+              Fermer
+            </button>
+          </div>
+        }
+      >
+        {selectedRow ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            {[
+              ["Équipe", selectedRow.team?.name || "—"],
+              ["Projet", selectedRow.project.projectName],
+              ["Slug", selectedRow.project.slug || "—"],
+              ["Statut", selectedRow.published ? "Publié" : "Brouillon"],
+              ["Vidéo", selectedRow.hasVideo ? "Disponible" : "Manquante"],
+              ["Votes", String(selectedRow.votes)],
+              ["Vues", String(selectedRow.project.viewCount || 0)],
+              ["Créé le", formatDate(selectedRow.project.createdAt)],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                className="rounded-2xl border border-white/8 bg-white/[0.035] p-4"
+              >
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                  {label}
+                </p>
+                <p className="mt-2 font-bold text-white">{value}</p>
+              </div>
+            ))}
+
+            <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-4 md:col-span-2">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                Description
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-300">
+                {selectedRow.project.description || "Aucune description."}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-4 md:col-span-2">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                Thumbnail
+            </p>
+
+            {selectedRow.project.thumbnailUrl ? (
+                <div className="mt-3 overflow-hidden rounded-2xl border border-white/10 bg-black/30">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                    src={selectedRow.project.thumbnailUrl}
+                    alt={selectedRow.project.projectName}
+                    className="h-56 w-full object-cover"
+                />
+                </div>
+            ) : (
+                <p className="mt-2 text-sm text-slate-500">Aucune image thumbnail.</p>
+            )}
+            </div>
+
+            <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-4 md:col-span-2">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                Vidéo
+            </p>
+
+            {selectedRow.project.videoUrl ? (
+                <div className="mt-3 space-y-3">
+                <video
+                    src={selectedRow.project.videoUrl}
+                    controls
+                    className="max-h-[360px] w-full rounded-2xl border border-white/10 bg-black"
+                />
+
+                <p className="break-all text-xs text-slate-500">
+                    {selectedRow.project.videoUrl}
+                </p>
+                </div>
+            ) : (
+                <p className="mt-2 text-sm text-slate-500">Aucune vidéo associée.</p>
+            )}
+            </div>
+
+            <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-4 md:col-span-2">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                Technologies
+            </p>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+                {!selectedRow.project.technologies ||
+                selectedRow.project.technologies.length === 0 ? (
+                <span className="text-sm text-slate-500">Aucune technologie.</span>
+                ) : (
+                selectedRow.project.technologies.map((item) => (
+                    <span
+                    key={item.technology.id}
+                    className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1.5 text-xs font-black text-cyan-100"
+                    >
+                    {item.technology.name}
+                    </span>
+                ))
+                )}
+            </div>
+            </div>
+
+            {selectedRow.project.slug ? (
+              <Link
+                href={`/projects/${selectedRow.project.slug}`}
+                className="inline-flex items-center justify-center rounded-2xl bg-cyan-400 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-cyan-300 md:col-span-2"
+              >
+                Voir la page publique
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
+      </AdminModal>
+
+      <AdminModal
+        open={modalMode === "delete"}
+        title="Archiver ce projet ?"
+        description="Ton API actuelle archive le projet avec DELETE /api/admin/projects/[id]."
+        onClose={closeModal}
+        size="md"
+        danger
+        icon={<Trash2 className="h-5 w-5" />}
+        footer={
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={closeModal}
+              disabled={modalSaving}
+              className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-black text-white transition hover:bg-white/[0.08] disabled:opacity-60"
+            >
+              Annuler
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={modalSaving}
+              className="inline-flex items-center justify-center rounded-2xl bg-red-500 px-5 py-3 text-sm font-black text-white transition hover:bg-red-400 disabled:opacity-60"
+            >
+              {modalSaving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              Confirmer archivage
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          {modalError ? (
+            <div className="rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">
+              {modalError}
+            </div>
+          ) : null}
+
+          <div className="rounded-2xl border border-red-400/15 bg-red-500/10 p-4">
+            <p className="font-black text-white">
+              {selectedRow?.project.projectName || "Projet sélectionné"}
+            </p>
+            <p className="mt-1 text-sm text-red-100/75">
+              Équipe : {selectedRow?.team?.name || "—"}
+            </p>
+          </div>
+        </div>
+      </AdminModal>
+      <AdminToastViewport toasts={toasts} onClose={removeToast} />
     </div>
   )
 }

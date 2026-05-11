@@ -7,133 +7,164 @@ function slugify(text: string) {
   return text
     .toLowerCase()
     .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^\w\s-]/g, "")
     .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
 }
 
-export async function GET(request: Request) {
+export async function GET(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
   const { admin } = await requireAdmin(request)
 
   if (!admin) {
-    return errorResponse("Admin non authentifié", ERROR_CODES.UNAUTHENTICATED, 401)
+    return errorResponse(
+      "Admin non authentifié",
+      ERROR_CODES.UNAUTHENTICATED,
+      401,
+    )
   }
 
   try {
-    const { searchParams } = new URL(request.url)
-    const editionId = searchParams.get("editionId")
-    const search = searchParams.get("search")
+    const { id } = await context.params
 
-    const teams = await prisma.team.findMany({
-      where: {
-        ...(editionId ? { editionId } : {}),
-        ...(search
-          ? {
-              OR: [
-                { name: { contains: search, mode: "insensitive" } },
-                { slug: { contains: search, mode: "insensitive" } },
-              ],
-            }
-          : {}),
-      },
+    const team = await prisma.team.findUnique({
+      where: { id },
       include: {
-        edition: {
-          select: {
-            id: true,
-            name: true,
-            year: true,
-            status: true,
-          },
-        },
         projects: {
-          select: {
-            id: true,
-            projectName: true,
-            slug: true,
-            status: true,
-            isPublished: true,
+          include: {
+            edition: true,
+            mediaFiles: true,
+            technologies: {
+              include: {
+                technology: true,
+              },
+            },
+            _count: {
+              select: {
+                votes: true,
+                views: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
           },
         },
-        _count: {
-          select: {
-            projects: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
+        edition: true,
       },
     })
 
-    return successResponse({ teams }, "Équipes récupérées")
+    if (!team) {
+      return errorResponse("Équipe introuvable", ERROR_CODES.NOT_FOUND, 404)
+    }
+
+    return successResponse({ team }, "Équipe récupérée")
   } catch (error) {
     return errorResponse(
-      "Erreur lors de la récupération des équipes",
+      "Erreur lors de la récupération de l’équipe",
       ERROR_CODES.INTERNAL_SERVER_ERROR,
       500,
-      error
+      error,
     )
   }
 }
 
-export async function POST(request: Request) {
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
   const { admin } = await requireAdmin(request)
 
   if (!admin) {
-    return errorResponse("Admin non authentifié", ERROR_CODES.UNAUTHENTICATED, 401)
+    return errorResponse(
+      "Admin non authentifié",
+      ERROR_CODES.UNAUTHENTICATED,
+      401,
+    )
   }
 
   try {
+    const { id } = await context.params
     const body = await request.json()
-    const { editionId, name, logoUrl, description } = body
 
-    if (!editionId || !name) {
+    const { name, slug, logoUrl } = body as {
+      name?: string
+      slug?: string
+      logoUrl?: string | null
+    }
+
+    const team = await prisma.team.findUnique({
+      where: { id },
+    })
+
+    if (!team) {
+      return errorResponse("Équipe introuvable", ERROR_CODES.NOT_FOUND, 404)
+    }
+
+    const finalName = typeof name === "string" ? name.trim() : undefined
+    const finalSlug =
+      typeof slug === "string" && slug.trim().length > 0
+        ? slugify(slug)
+        : finalName
+          ? slugify(finalName)
+          : undefined
+
+    if (finalName !== undefined && finalName.length === 0) {
       return errorResponse(
-        "editionId et name sont obligatoires",
+        "Le nom de l’équipe est obligatoire",
         ERROR_CODES.VALIDATION_ERROR,
-        400
+        400,
       )
     }
 
-    const edition = await prisma.competitionEdition.findUnique({
-      where: { id: editionId },
-    })
+    if (finalSlug && finalSlug !== team.slug) {
+      const duplicate = await prisma.team.findFirst({
+        where: {
+          editionId: team.editionId,
+          slug: finalSlug,
+          NOT: {
+            id,
+          },
+        },
+      })
 
-    if (!edition) {
-      return errorResponse("Édition introuvable", ERROR_CODES.NOT_FOUND, 404)
+      if (duplicate) {
+        return errorResponse(
+          "Une autre équipe utilise déjà ce slug",
+          ERROR_CODES.DUPLICATE_RESOURCE,
+          409,
+        )
+      }
     }
 
-    const slug = slugify(name)
-
-    const existingTeam = await prisma.team.findFirst({
-      where: {
-        editionId,
-        slug,
-      },
-    })
-
-    if (existingTeam) {
-      return errorResponse(
-        "Une équipe avec ce nom existe déjà dans cette édition",
-        ERROR_CODES.DUPLICATE_RESOURCE,
-        409
-      )
-    }
-
-    const team = await prisma.team.create({
+    const updatedTeam = await prisma.team.update({
+      where: { id },
       data: {
-        editionId,
-        name,
-        slug,
-        logoUrl: logoUrl || null,
-        description: description || null,
-        isActive: true,
+        name: finalName ?? undefined,
+        slug: finalSlug ?? undefined,
+        logoUrl: logoUrl === undefined ? undefined : logoUrl,
       },
       include: {
-        edition: {
-          select: {
-            id: true,
-            name: true,
-            year: true,
+        edition: true,
+        projects: {
+          include: {
+            mediaFiles: true,
+            technologies: {
+              include: {
+                technology: true,
+              },
+            },
+            _count: {
+              select: {
+                votes: true,
+                views: true,
+              },
+            },
           },
         },
       },
@@ -143,24 +174,99 @@ export async function POST(request: Request) {
       data: {
         actorType: "ADMIN",
         adminId: admin.id,
-        action: "TEAM_CREATED",
+        action: "TEAM_UPDATED",
         targetType: "TEAM",
-        targetId: team.id,
+        targetId: id,
         metadata: {
-          editionId,
-          name,
-          slug,
+          name: finalName,
+          slug: finalSlug,
+          logoUrl,
         },
       },
     })
 
-    return successResponse({ team }, "Équipe créée", 201)
+    return successResponse({ team: updatedTeam }, "Équipe modifiée")
   } catch (error) {
     return errorResponse(
-      "Erreur lors de la création de l’équipe",
+      "Erreur lors de la modification de l’équipe",
       ERROR_CODES.INTERNAL_SERVER_ERROR,
       500,
-      error
+      error,
+    )
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const { admin } = await requireAdmin(request)
+
+  if (!admin) {
+    return errorResponse(
+      "Admin non authentifié",
+      ERROR_CODES.UNAUTHENTICATED,
+      401,
+    )
+  }
+
+  try {
+    const { id } = await context.params
+
+    const team = await prisma.team.findUnique({
+      where: { id },
+      include: {
+        projects: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    })
+
+    if (!team) {
+      return errorResponse("Équipe introuvable", ERROR_CODES.NOT_FOUND, 404)
+    }
+
+    if (team.projects.length > 0) {
+      await prisma.project.updateMany({
+        where: {
+          teamId: id,
+        },
+        data: {
+          status: "ARCHIVED",
+          isPublished: false,
+          deletedAt: new Date(),
+        },
+      })
+    }
+
+    await prisma.auditLog.create({
+      data: {
+        actorType: "ADMIN",
+        adminId: admin.id,
+        action: "TEAM_ARCHIVED",
+        targetType: "TEAM",
+        targetId: id,
+        metadata: {
+          archivedProjectsCount: team.projects.length,
+        },
+      },
+    })
+
+    return successResponse(
+      {
+        teamId: id,
+        archivedProjectsCount: team.projects.length,
+      },
+      "Équipe archivée avec ses projets",
+    )
+  } catch (error) {
+    return errorResponse(
+      "Erreur lors de l’archivage de l’équipe",
+      ERROR_CODES.INTERNAL_SERVER_ERROR,
+      500,
+      error,
     )
   }
 }
