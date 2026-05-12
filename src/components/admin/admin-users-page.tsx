@@ -70,6 +70,27 @@ type UserSessionItem = {
   expiresAt?: string | null
 }
 
+type UserVoteAttemptItem = {
+  id: string
+  status?: string | null
+  reason?: string | null
+  ipAddress?: string | null
+  userAgent?: string | null
+  projectId?: string | null
+  createdAt?: string | null
+  project?: ProjectItem | null
+}
+
+type UserFraudAlertItem = {
+  id: string
+  type?: string | null
+  severity?: string | null
+  status?: string | null
+  message?: string | null
+  ipAddress?: string | null
+  createdAt?: string | null
+}
+
 type UserItem = {
   id: string
   instagramId?: string | null
@@ -86,6 +107,8 @@ type UserItem = {
   lastLoginAt?: string | null
   votes?: UserVoteItem[]
   sessions?: UserSessionItem[]
+  voteAttempts?: UserVoteAttemptItem[]
+  fraudAlerts?: UserFraudAlertItem[]
   _count?: {
     votes?: number
     sessions?: number
@@ -665,6 +688,66 @@ function AuthRequiredCard() {
           Aller à la connexion admin
           <ChevronRight className="ml-2 h-4 w-4" />
         </Link>
+      </div>
+    </div>
+  )
+}
+
+function DetailListCard({
+  title,
+  emptyLabel,
+  children,
+}: {
+  title: string
+  emptyLabel: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-4 md:col-span-2">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+        {title}
+      </p>
+
+      <div className="mt-3 space-y-2">
+        {children || <p className="text-sm text-slate-500">{emptyLabel}</p>}
+      </div>
+    </div>
+  )
+}
+
+function DetailMiniRow({
+  title,
+  subtitle,
+  meta,
+  tone = "cyan",
+}: {
+  title: string
+  subtitle?: string
+  meta?: string
+  tone?: "cyan" | "emerald" | "amber" | "red"
+}) {
+  const tones = {
+    cyan: "border-cyan-400/15 bg-cyan-400/8 text-cyan-100",
+    emerald: "border-emerald-400/15 bg-emerald-400/8 text-emerald-100",
+    amber: "border-amber-400/15 bg-amber-400/8 text-amber-100",
+    red: "border-red-400/15 bg-red-400/8 text-red-100",
+  }
+
+  return (
+    <div className={cn("rounded-2xl border p-3", tones[tone])}>
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="truncate font-bold text-white">{title}</p>
+          {subtitle ? (
+            <p className="mt-1 break-all text-xs text-slate-400">{subtitle}</p>
+          ) : null}
+        </div>
+
+        {meta ? (
+          <span className="shrink-0 text-xs font-bold text-slate-500">
+            {meta}
+          </span>
+        ) : null}
       </div>
     </div>
   )
@@ -1312,44 +1395,90 @@ export default function AdminUsersPage() {
               </p>
               <div className="mt-3 space-y-2 text-sm text-slate-300">
                 <p>
-                  <span className="text-slate-500">User ID :</span>{" "}
-                  <span className="font-mono">{selectedRow.user.id}</span>
+                <span className="text-slate-500">Banni :</span>{" "}
+                <span className="font-mono">
+                    {selectedRow.user.isBanned ? "Oui" : "Non"}
+                </span>
                 </p>
+
                 <p>
-                  <span className="text-slate-500">Instagram ID :</span>{" "}
-                  <span className="font-mono">
-                    {selectedRow.user.instagramId || "—"}
-                  </span>
+                <span className="text-slate-500">Avatar :</span>{" "}
+                <span className="break-all font-mono">
+                    {selectedRow.user.avatarUrl || "—"}
+                </span>
                 </p>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-4 md:col-span-2">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
-                Derniers votes
-              </p>
+            <DetailListCard title="Derniers votes" emptyLabel="Aucun vote enregistré.">
+            {selectedRow.user.votes && selectedRow.user.votes.length > 0
+                ? selectedRow.user.votes.slice(0, 5).map((vote) => (
+                    <DetailMiniRow
+                    key={vote.id}
+                    title={vote.project?.projectName || vote.projectId || "Projet"}
+                    subtitle={`Statut : ${vote.status || "VALID"}`}
+                    meta={formatDateTime(vote.createdAt)}
+                    tone={
+                        vote.status === "VALID" || !vote.status
+                        ? "emerald"
+                        : vote.status === "SUSPECT"
+                            ? "amber"
+                            : "red"
+                    }
+                    />
+                ))
+                : null}
+            </DetailListCard>
 
-              <div className="mt-3 space-y-2">
-                {!selectedRow.user.votes || selectedRow.user.votes.length === 0 ? (
-                  <p className="text-sm text-slate-500">Aucun vote enregistré.</p>
-                ) : (
-                  selectedRow.user.votes.slice(0, 5).map((vote) => (
-                    <div
-                      key={vote.id}
-                      className="rounded-2xl border border-white/8 bg-black/20 p-3"
-                    >
-                      <p className="font-bold text-white">
-                        {vote.project?.projectName || vote.projectId || "Projet"}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Statut : {vote.status || "VALID"} —{" "}
-                        {formatDateTime(vote.createdAt)}
-                      </p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+            <DetailListCard title="Dernières sessions" emptyLabel="Aucune session enregistrée.">
+            {selectedRow.user.sessions && selectedRow.user.sessions.length > 0
+                ? selectedRow.user.sessions.slice(0, 5).map((session) => (
+                    <DetailMiniRow
+                    key={session.id}
+                    title={`Session ${session.id.slice(0, 8)}...`}
+                    subtitle={`Expiration : ${formatDateTime(session.expiresAt)}`}
+                    meta={formatDateTime(session.createdAt)}
+                    tone="cyan"
+                    />
+                ))
+                : null}
+            </DetailListCard>
+
+            <DetailListCard title="Tentatives de vote" emptyLabel="Aucune tentative enregistrée.">
+            {selectedRow.user.voteAttempts && selectedRow.user.voteAttempts.length > 0
+                ? selectedRow.user.voteAttempts.slice(0, 5).map((attempt) => (
+                    <DetailMiniRow
+                    key={attempt.id}
+                    title={attempt.project?.projectName || attempt.projectId || "Projet"}
+                    subtitle={`${attempt.status || "UNKNOWN"} — ${
+                        attempt.reason || "Aucune raison"
+                    }`}
+                    meta={formatDateTime(attempt.createdAt)}
+                    tone={attempt.status === "ALLOWED" ? "emerald" : "amber"}
+                    />
+                ))
+                : null}
+            </DetailListCard>
+
+            <DetailListCard title="Alertes fraude" emptyLabel="Aucune alerte fraude.">
+            {selectedRow.user.fraudAlerts && selectedRow.user.fraudAlerts.length > 0
+                ? selectedRow.user.fraudAlerts.slice(0, 5).map((alert) => (
+                    <DetailMiniRow
+                    key={alert.id}
+                    title={alert.type || "Alerte fraude"}
+                    subtitle={`${alert.severity || "NORMAL"} — ${
+                        alert.message || "Signalement sans message"
+                    }`}
+                    meta={formatDateTime(alert.createdAt)}
+                    tone={
+                        alert.severity === "HIGH" || alert.severity === "CRITICAL"
+                        ? "red"
+                        : "amber"
+                    }
+                    />
+                ))
+                : null}
+            </DetailListCard>
           </div>
         ) : null}
       </AdminModal>
