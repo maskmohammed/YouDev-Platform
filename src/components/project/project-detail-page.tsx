@@ -238,6 +238,9 @@ const handleRealtimeProjectViewUpdate = useCallback(
 useLeaderboardRealtime({
   onLeaderboardUpdated: handleRealtimeLeaderboardUpdate,
   onProjectViewUpdated: handleRealtimeProjectViewUpdate,
+  onConfigUpdated: () => {
+    void loadProject({ silent: true, recordView: false })
+    },
 })
 
   async function recordProjectView(projectId: string) {

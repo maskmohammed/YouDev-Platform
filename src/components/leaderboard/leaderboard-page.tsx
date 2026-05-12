@@ -178,6 +178,9 @@ export default function LeaderboardPage() {
         useLeaderboardRealtime({
         onLeaderboardUpdated: handleRealtimeLeaderboardUpdate,
         onProjectViewUpdated: handleRealtimeProjectViewUpdate,
+        onConfigUpdated: () => {
+            void loadData({ silent: true })
+        },
         })
 
     useEffect(() => {

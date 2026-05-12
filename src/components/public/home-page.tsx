@@ -381,6 +381,9 @@ export default function HomePage() {
     useLeaderboardRealtime({
     onLeaderboardUpdated: handleRealtimeLeaderboardUpdate,
     onProjectViewUpdated: handleRealtimeProjectViewUpdate,
+    onConfigUpdated: () => {
+    void loadData({ silent: true })
+    },
     })
 
     useEffect(() => {

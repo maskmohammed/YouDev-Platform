@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma"
 import { requireAdmin } from "@/lib/admin-auth"
 import { successResponse, errorResponse } from "@/lib/response"
 import { ERROR_CODES } from "@/lib/errors"
+import { REALTIME_EVENTS } from "@/lib/realtime/events"
+import { emitRealtimeEvent } from "@/lib/realtime/server-bus"
 
 export async function GET(request: Request) {
   const { admin } = await requireAdmin(request)
@@ -89,6 +91,39 @@ export async function PATCH(request: Request) {
         metadata: body,
       },
     })
+
+    const realtimeTimestamp = new Date().toISOString()
+
+    const configUpdatedEmitted = emitRealtimeEvent(
+      REALTIME_EVENTS.CONFIG_UPDATED,
+      {
+        editionId,
+        configId: config.id,
+        isVotingOpen: config.isVotingOpen,
+        isFrozen: config.isFrozen,
+        maxVotesPerUser: config.maxVotesPerUser,
+        maxVotesPerProject: config.maxVotesPerProject,
+        qualifiedCount: config.qualifiedCount,
+        allowPublicLeaderboard: config.allowPublicLeaderboard,
+        showExactVotes: config.showExactVotes,
+        allowProjectViews: config.allowProjectViews,
+        timestamp: realtimeTimestamp,
+      },
+    )
+
+    const leaderboardUpdatedEmitted = emitRealtimeEvent(
+      REALTIME_EVENTS.LEADERBOARD_UPDATED,
+      {
+        editionId,
+        timestamp: realtimeTimestamp,
+      },
+    )
+
+    console.log("[realtime] config.updated emitted:", configUpdatedEmitted)
+    console.log(
+      "[realtime] leaderboard.updated emitted after config:",
+      leaderboardUpdatedEmitted,
+    )
 
     return successResponse({ config }, "Configuration modifiée")
   } catch (error) {
