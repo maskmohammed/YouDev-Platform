@@ -7,6 +7,7 @@ export const REALTIME_EVENTS = {
   CONFIG_UPDATED: "config.updated",
   ADMIN_NOTIFICATION: "admin.notification",
   USER_UPDATED: "user.updated",
+  FRAUD_UPDATED: "fraud.updated",
 } as const
 
 export type RealtimeEventName =
@@ -54,6 +55,15 @@ export type UserUpdatedPayload = RealtimeBasePayload & {
   userId: string
   isBanned: boolean
   action: "USER_BANNED" | "USER_UNBANNED" | "USER_UPDATED"
+}
+
+export type FraudUpdatedPayload = RealtimeBasePayload & {
+  fraudAlertId: string
+  status: "OPEN" | "REVIEWING" | "RESOLVED" | "IGNORED"
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+  type: string
+  userId?: string | null
+  projectId?: string | null
 }
 
 export type ConfigUpdatedPayload = RealtimeBasePayload & {

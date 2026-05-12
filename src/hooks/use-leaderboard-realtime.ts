@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import {
   REALTIME_EVENTS,
   type UserUpdatedPayload,
+  type FraudUpdatedPayload,
   type ConfigUpdatedPayload,
   type LeaderboardUpdatedPayload,
   type ProjectViewUpdatedPayload,
@@ -18,6 +19,7 @@ type UseLeaderboardRealtimeOptions = {
   onProjectViewUpdated?: (payload: ProjectViewUpdatedPayload) => void
   onConfigUpdated?: (payload: ConfigUpdatedPayload) => void
   onUserUpdated?: (payload: UserUpdatedPayload) => void
+  onFraudUpdated?: (payload: FraudUpdatedPayload) => void
 }
 
 type RealtimeStatus = "connecting" | "connected" | "disconnected"
@@ -28,6 +30,7 @@ export function useLeaderboardRealtime({
   onProjectViewUpdated,
   onConfigUpdated,
   onUserUpdated,
+  onFraudUpdated,
 }: UseLeaderboardRealtimeOptions = {}) {
   const [status, setStatus] = useState<RealtimeStatus>("disconnected")
   const [lastLeaderboardUpdate, setLastLeaderboardUpdate] =
@@ -42,6 +45,9 @@ export function useLeaderboardRealtime({
 
   const [lastUserUpdated, setLastUserUpdated] =
     useState<UserUpdatedPayload | null>(null)
+
+  const [lastFraudUpdated, setLastFraudUpdated] =
+    useState<FraudUpdatedPayload | null>(null)
 
   useEffect(() => {
     const socket = getSocket()
@@ -79,6 +85,11 @@ export function useLeaderboardRealtime({
         onUserUpdated?.(payload)
     }
 
+    function handleFraudUpdated(payload: FraudUpdatedPayload) {
+        setLastFraudUpdated(payload)
+        onFraudUpdated?.(payload)
+    }
+
     queueMicrotask(() => {
       setStatus("connecting")
     })
@@ -90,6 +101,7 @@ export function useLeaderboardRealtime({
     socket.on(REALTIME_EVENTS.PROJECT_VIEW_UPDATED, handleProjectViewUpdated)
     socket.on(REALTIME_EVENTS.CONFIG_UPDATED, handleConfigUpdated)
     socket.on(REALTIME_EVENTS.USER_UPDATED, handleUserUpdated)
+    socket.on(REALTIME_EVENTS.FRAUD_UPDATED, handleFraudUpdated)
 
     connectSocket()
 
@@ -101,8 +113,9 @@ export function useLeaderboardRealtime({
       socket.off(REALTIME_EVENTS.PROJECT_VIEW_UPDATED, handleProjectViewUpdated)
       socket.off(REALTIME_EVENTS.CONFIG_UPDATED, handleConfigUpdated)
       socket.off(REALTIME_EVENTS.USER_UPDATED, handleUserUpdated)
+      socket.off(REALTIME_EVENTS.FRAUD_UPDATED, handleFraudUpdated)
     }
-  }, [onLeaderboardUpdated, onVoteCreated, onProjectViewUpdated, onConfigUpdated, onUserUpdated])
+  }, [onLeaderboardUpdated, onVoteCreated, onProjectViewUpdated, onConfigUpdated, onUserUpdated, onFraudUpdated])
 
   return {
     status,
@@ -112,5 +125,6 @@ export function useLeaderboardRealtime({
     lastProjectViewUpdated,
     lastConfigUpdated,
     lastUserUpdated,
+    lastFraudUpdated,
   }
 }
