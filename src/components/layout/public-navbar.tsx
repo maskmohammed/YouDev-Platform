@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import HeaderAuthButton from "@/components/public/header-auth-button"
 import { usePathname } from "next/navigation"
-import RealtimeStatusBadge from "@/components/realtime/realtime-status-badge"
+// import RealtimeStatusBadge from "@/components/realtime/realtime-status-badge"
 import {
   Code2,
   Home,
@@ -115,6 +116,8 @@ export default function PublicNavbar() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <HeaderAuthButton />
+
           <Button
             onClick={toggleTheme}
             variant="outline"
@@ -132,10 +135,6 @@ export default function PublicNavbar() {
               </>
             )}
           </Button>
-
-            <div className="hidden md:flex">
-                <RealtimeStatusBadge />
-            </div>
         </div>
       </nav>
 

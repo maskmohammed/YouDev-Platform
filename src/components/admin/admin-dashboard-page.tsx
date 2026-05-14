@@ -968,6 +968,167 @@ function OptionalApiNotice() {
   )
 }
 
+function AdvancedHourlyVotesChart({
+  data,
+}: {
+  data: Array<{
+    hour: string
+    votes: number
+  }>
+}) {
+  const maxVotes = Math.max(...data.map((item) => item.votes), 1)
+  const totalVotes = data.reduce((sum, item) => sum + item.votes, 0)
+  const peak = data.reduce(
+    (best, item) => (item.votes > best.votes ? item : best),
+    data[0] || { hour: "—", votes: 0 },
+  )
+
+  const points = data.map((item, index) => {
+    const x = data.length === 1 ? 0 : (index / (data.length - 1)) * 100
+    const y = 100 - (item.votes / maxVotes) * 78 - 10
+
+    return { ...item, x, y }
+  })
+
+  const linePath = points
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+    .join(" ")
+
+  const areaPath =
+    points.length > 0
+      ? `${linePath} L ${points[points.length - 1].x} 100 L ${points[0].x} 100 Z`
+      : ""
+
+  return (
+    <div className="relative h-full overflow-hidden rounded-[28px] border border-white/8 bg-black/25 p-5">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.12),transparent_38%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:28px_28px]" />
+
+      <div className="relative mb-5 flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-xl font-black text-white">Votes par heure</h3>
+          <p className="mt-1 text-sm text-slate-400">
+            Courbe des votes valides enregistrés aujourd’hui.
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-right">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">
+            Total
+          </p>
+          <p className="text-2xl font-black text-white">{totalVotes}</p>
+        </div>
+      </div>
+
+      <div className="relative h-[260px]">
+        <svg
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          className="absolute inset-0 h-full w-full overflow-visible"
+        >
+          <defs>
+            <linearGradient id="votesAreaGradient" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="rgba(34,211,238,0.35)" />
+              <stop offset="55%" stopColor="rgba(34,211,238,0.10)" />
+              <stop offset="100%" stopColor="rgba(34,211,238,0)" />
+            </linearGradient>
+
+            <linearGradient id="votesLineGradient" x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0%" stopColor="#22d3ee" />
+              <stop offset="50%" stopColor="#a78bfa" />
+              <stop offset="100%" stopColor="#f59e0b" />
+            </linearGradient>
+          </defs>
+
+          {[20, 40, 60, 80].map((y) => (
+            <line
+              key={y}
+              x1="0"
+              x2="100"
+              y1={y}
+              y2={y}
+              stroke="rgba(255,255,255,0.08)"
+              strokeWidth="0.35"
+            />
+          ))}
+
+          {areaPath ? (
+            <path d={areaPath} fill="url(#votesAreaGradient)" />
+          ) : null}
+
+          {linePath ? (
+            <path
+              d={linePath}
+              fill="none"
+              stroke="url(#votesLineGradient)"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          ) : null}
+        </svg>
+
+        <div className="absolute inset-0">
+          {points.map((point) => (
+            <div
+              key={point.hour}
+              className="group absolute"
+              style={{
+                left: `${point.x}%`,
+                top: `${point.y}%`,
+                transform: "translate(-50%, -50%)",
+              }}
+            >
+              <div className="h-3 w-3 rounded-full border border-cyan-200 bg-cyan-400 shadow-[0_0_24px_rgba(34,211,238,0.65)]" />
+
+              <div className="pointer-events-none absolute bottom-5 left-1/2 z-20 hidden w-max -translate-x-1/2 rounded-2xl border border-white/10 bg-slate-950/95 px-3 py-2 text-xs shadow-2xl group-hover:block">
+                <p className="font-black text-white">{point.hour}</p>
+                <p className="mt-1 text-cyan-200">{point.votes} vote(s)</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs font-bold text-slate-500">
+          {data.map((item) => (
+            <span key={item.hour}>{item.hour}</span>
+          ))}
+        </div>
+      </div>
+
+      <div className="relative mt-5 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-3">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+            Pic
+          </p>
+          <p className="mt-1 font-black text-white">
+            {peak.hour} · {peak.votes}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-3">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+            Moyenne
+          </p>
+          <p className="mt-1 font-black text-white">
+            {Math.round(totalVotes / Math.max(data.length, 1))}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-3">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+            Activité
+          </p>
+          <p className="mt-1 font-black text-white">
+            {totalVotes > 0 ? "Active" : "Calme"}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminDashboardPage() {
   const router = useRouter()
 
@@ -1403,21 +1564,21 @@ export default function AdminDashboardPage() {
               </div>
 
               <div className="grid gap-6 xl:grid-cols-[1.15fr_1fr_360px]">
-                <BarMiniChart
-                  title="Votes par heure"
-                  subtitle="Répartition des votes valides aujourd’hui"
-                  items={todayChart}
-                  accent="cyan"
+                <AdvancedHourlyVotesChart
+                    data={todayChart.map((item) => ({
+                        hour: item.label,
+                        votes: item.count,
+                    }))}
                 />
 
                 <BarMiniChart
-                  title="Top projets par votes"
-                  subtitle="Classement interne des projets les plus soutenus"
-                  items={topProjects.map((item) => ({
-                    label: item.projectName,
-                    count: item.count,
-                  }))}
-                  accent="amber"
+                    title="Top projets par votes"
+                    subtitle="Classement indicatif basé sur les votes publics. La sélection finale dépend aussi d’autres critères."
+                    items={topProjects.map((item) => ({
+                        label: item.projectName,
+                        count: item.count,
+                    }))}
+                    accent="amber"
                 />
 
                 <div className="space-y-4">
@@ -1441,12 +1602,13 @@ export default function AdminDashboardPage() {
                     }
                   />
 
-                  <SideInfoCard
-                    title="Top qualifiés"
-                    subtitle="Zone finale"
-                    value={String(dashboard.config?.qualifiedCount || 10)}
-                    icon={<Trophy className="h-5 w-5" />}
-                  />
+                    <SideInfoCard
+                        title="Places à sélectionner"
+                        subtitle="Phase finale"
+                        value={String(dashboard.config?.qualifiedCount || 10)}
+                        icon={<Trophy className="h-5 w-5" />}
+                        tone="warning"
+                    />
 
                   <SideInfoCard
                     title="Votes / utilisateur"
