@@ -239,58 +239,66 @@ export default function ProfilePage() {
     }
   }
 
-  async function devLogin() {
-    try {
-      setConnecting(true)
-      setFeedback({
-        type: "",
-        message: "",
-      })
+  // async function devLogin() {
+  //   try {
+  //     setConnecting(true)
+  //     setFeedback({
+  //       type: "",
+  //       message: "",
+  //     })
 
-      const response = await fetch("/api/auth/dev-login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username: "frontend_profile_user",
-          name: "Frontend Profile User",
-        }),
-      })
+  //     const response = await fetch("/api/auth/dev-login", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({
+  //         username: "frontend_profile_user",
+  //         name: "Frontend Profile User",
+  //       }),
+  //     })
 
-      const json = await response.json()
+  //     const json = await response.json()
 
-      if (!json.success) {
-        throw new Error(json.message || "Connexion impossible.")
-      }
+  //     if (!json.success) {
+  //       throw new Error(json.message || "Connexion impossible.")
+  //     }
 
-      const token = json.data.token
+  //     const token = json.data.token
 
-      localStorage.setItem("youdev_user_token", token)
-      setUserToken(token)
+  //     localStorage.setItem("youdev_user_token", token)
+  //     setUserToken(token)
 
-      await loadProfile(token)
+  //     await loadProfile(token)
 
-      setFeedback({
-        type: "success",
-        message: "Connexion utilisateur réussie.",
-      })
-    } catch (error) {
-      setFeedback({
-        type: "error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Erreur lors de la connexion utilisateur.",
-      })
-    } finally {
-      setConnecting(false)
-    }
+  //     setFeedback({
+  //       type: "success",
+  //       message: "Connexion utilisateur réussie.",
+  //     })
+  //   } catch (error) {
+  //     setFeedback({
+  //       type: "error",
+  //       message:
+  //         error instanceof Error
+  //           ? error.message
+  //           : "Erreur lors de la connexion utilisateur.",
+  //     })
+  //   } finally {
+  //     setConnecting(false)
+  //   }
+  // }
+
+  function loginWithInstagram() {
+    setConnecting(true)
+
+    const returnTo = encodeURIComponent("/profile")
+    window.location.href = `/api/auth/instagram/start?returnTo=${returnTo}`
   }
 
   async function logout() {
     if (!userToken) {
       localStorage.removeItem("youdev_user_token")
+      window.dispatchEvent(new Event("youdev-auth-changed"))
       setProfile(null)
       setVotes([])
       setRemainingVotes(null)
@@ -308,6 +316,7 @@ export default function ProfilePage() {
       })
 
       localStorage.removeItem("youdev_user_token")
+      window.dispatchEvent(new Event("youdev-auth-changed"))
       setUserToken(null)
       setProfile(null)
       setVotes([])
@@ -319,6 +328,7 @@ export default function ProfilePage() {
       })
     } catch {
       localStorage.removeItem("youdev_user_token")
+      window.dispatchEvent(new Event("youdev-auth-changed"))
       setUserToken(null)
       setProfile(null)
       setVotes([])
@@ -364,7 +374,7 @@ export default function ProfilePage() {
 
         {!profile ? (
           <Reveal>
-            <NotConnectedState connecting={connecting} onConnect={devLogin} />
+            <NotConnectedState connecting={connecting} onConnect={loginWithInstagram} />
           </Reveal>
         ) : (
           <section className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-8">
@@ -558,7 +568,7 @@ function NotConnectedState({
         </div>
 
         <Badge className="mb-5 rounded-full bg-yellow-400/15 px-4 py-2 text-yellow-100">
-          Session utilisateur requise
+          Connexion Instagram requise
         </Badge>
 
         <p className="mb-3 text-xs font-black uppercase tracking-[0.24em] text-cyan-200/80 sm:text-sm sm:tracking-[0.32em]">
@@ -593,7 +603,7 @@ function NotConnectedState({
           ) : (
             <>
               <Camera className="mr-2 h-4 w-4" />
-              Connexion utilisateur dev
+              Se connecter avec Instagram
             </>
           )}
         </Button>

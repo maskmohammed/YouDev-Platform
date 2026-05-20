@@ -11,6 +11,7 @@ function InstagramSuccessContent() {
 
     if (token) {
       localStorage.setItem("youdev_user_token", token)
+      window.dispatchEvent(new Event("youdev-auth-changed"))
     }
 
     setTimeout(() => {

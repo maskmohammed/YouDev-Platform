@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { useLeaderboardRealtime } from "@/hooks/use-leaderboard-realtime"
 import { motion, AnimatePresence } from "framer-motion"
 import RealtimeUpdateToast from "@/components/realtime/realtime-update-toast"
+import LoginRequiredModal from "@/components/public/login-required-modal"
 import type { LeaderboardUpdatedPayload } from "@/lib/realtime/events"
 import {
   ArrowRight,
@@ -97,6 +98,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState("")
+  const [loginRequiredOpen, setLoginRequiredOpen] = useState(false)
 
   const [userToken, setUserToken] = useState<string | null>(null)
   const [votedProjectIds, setVotedProjectIds] = useState<string[]>([])
@@ -202,36 +204,52 @@ export default function HomePage() {
     }
   }
 
-  async function getOrCreateUserToken() {
+  // async function getOrCreateUserToken() {
+  //   if (userToken) {
+  //     return userToken
+  //   }
+
+  //   const response = await fetch("/api/auth/dev-login", {
+  //     method: "POST",
+  //     headers: {
+  //       "Content-Type": "application/json",
+  //     },
+  //     body: JSON.stringify({
+  //       username: "frontend_test_user",
+  //       name: "Frontend Test User",
+  //     }),
+  //   })
+
+  //   const json = await response.json()
+
+  //   if (!json.success) {
+  //     throw new Error(json.message || "Connexion utilisateur impossible.")
+  //   }
+
+  //   const token = json.data.token
+
+  //   localStorage.setItem("youdev_user_token", token)
+  //   setUserToken(token)
+
+  //   await loadUserVotes(token)
+
+  //   return token
+  // }
+
+  async function getUserTokenOrThrow() {
     if (userToken) {
       return userToken
     }
 
-    const response = await fetch("/api/auth/dev-login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        username: "frontend_test_user",
-        name: "Frontend Test User",
-      }),
-    })
+    const savedToken = localStorage.getItem("youdev_user_token")
 
-    const json = await response.json()
-
-    if (!json.success) {
-      throw new Error(json.message || "Connexion utilisateur impossible.")
+    if (savedToken) {
+      setUserToken(savedToken)
+      await loadUserVotes(savedToken)
+      return savedToken
     }
 
-    const token = json.data.token
-
-    localStorage.setItem("youdev_user_token", token)
-    setUserToken(token)
-
-    await loadUserVotes(token)
-
-    return token
+    throw new Error("LOGIN_REQUIRED")
   }
 
   function openVoteModal(project: Project) {
@@ -247,6 +265,14 @@ export default function HomePage() {
           ? "Le classement est gelé. Aucun vote n’est possible."
           : "Les votes sont actuellement fermés.",
       })
+      return
+    }
+
+    const savedToken = localStorage.getItem("youdev_user_token")
+
+    if (!userToken && !savedToken) {
+      setSelectedProject(null)
+      setLoginRequiredOpen(true)
       return
     }
 
@@ -297,7 +323,7 @@ export default function HomePage() {
         throw new Error("Vous avez déjà voté pour ce projet.")
       }
 
-      const token = await getOrCreateUserToken()
+      const token = await getUserTokenOrThrow()
 
       const response = await fetch("/api/votes/confirm", {
         method: "POST",
@@ -348,6 +374,17 @@ export default function HomePage() {
       await loadData({ silent: true })
       await loadUserVotes(token)
     } catch (err) {
+      if (err instanceof Error && err.message === "LOGIN_REQUIRED") {
+        setSelectedProject(null)
+        setVoteFeedback({
+          type: "error",
+          message: "Connectez-vous avec Instagram pour voter.",
+        })
+
+        const returnTo = encodeURIComponent("/")
+        window.location.href = `/api/auth/instagram/start?returnTo=${returnTo}`
+        return
+      }
       setVoteFeedback({
         type: "error",
         message:
@@ -515,6 +552,12 @@ export default function HomePage() {
         }}
         onConfirm={confirmVote}
       />
+
+      <LoginRequiredModal
+        open={loginRequiredOpen}
+        onClose={() => setLoginRequiredOpen(false)}
+        returnTo="/"
+      />
     </main>
   )
 }
@@ -583,6 +626,147 @@ export default function HomePage() {
 //   )
 // }
 
+// function HeroSection({
+//   config,
+//   totalProjects,
+//   totalVotes,
+//   remainingVotesState,
+//   refreshing,
+// }: {
+//   config: PublicConfig | null
+//   totalProjects: number
+//   totalVotes: number
+//   remainingVotesState: RemainingVotesState | null
+//   refreshing: boolean
+// }) {
+//   return (
+//     <section className="relative pt-10">
+//       <div className="absolute right-0 top-0 -z-10 h-72 w-72 rounded-full bg-blue-500/20 blur-3xl" />
+//       <div className="absolute left-10 top-32 -z-10 h-72 w-72 rounded-full bg-violet-500/20 blur-3xl" />
+
+//       <div className="grid items-center gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+//         <motion.div
+//           initial={{ opacity: 0, y: 24 }}
+//           animate={{ opacity: 1, y: 0 }}
+//           transition={{ duration: 0.7 }}
+//         >
+//           <Badge className="mb-5 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-4 py-2 text-cyan-200">
+//             <Sparkles className="mr-2 h-4 w-4" />
+//             Qualification en ligne — Classement live
+//           </Badge>
+
+//           <h1 className="hero-glow text-6xl font-black tracking-tight md:text-8xl">
+//             <span className="premium-gradient-text">YOU·DEV</span>
+//           </h1>
+
+//           <p className="mt-5 max-w-2xl text-xl font-medium text-slate-200">
+//             Coding & Innovation pour les développeurs de demain.
+//           </p>
+
+//           <p className="mt-4 max-w-2xl text-base leading-8 text-slate-400">
+//             Découvrez les projets en compétition, votez pour vos favoris et
+//             suivez en direct les équipes qualifiées pour la grande finale.
+//           </p>
+
+//           <div className="mt-8 flex flex-wrap gap-4">
+//             <Button
+//               size="lg"
+//               className="rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 font-bold text-white"
+//             >
+//               Découvrir les projets
+//               <ArrowRight className="ml-2 h-4 w-4" />
+//             </Button>
+
+//             <Button
+//               size="lg"
+//               variant="outline"
+//               className="rounded-2xl border-white/15 bg-white/5 text-white hover:bg-white/10"
+//             >
+//               Voir le classement
+//             </Button>
+//           </div>
+
+//           {remainingVotesState && (
+//             <div className="mt-6 inline-flex items-center gap-2 rounded-2xl border border-emerald-300/15 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
+//               <ShieldCheck className="h-4 w-4" />
+//               Vous pouvez encore voter{" "}
+//               <span className="font-black">
+//                 {remainingVotesState.remainingVotes}
+//               </span>{" "}
+//               fois.
+//             </div>
+//           )}
+//         </motion.div>
+
+//         <motion.div
+//           initial={{ opacity: 0, scale: 0.96 }}
+//           animate={{ opacity: 1, scale: 1 }}
+//           whileHover={{ y: -4 }}
+//           transition={{ duration: 0.7, delay: 0.1 }}
+//           className="glass-card neon-border relative overflow-hidden rounded-[2rem] p-6"
+//         >
+//           <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/10 via-transparent to-violet-500/10" />
+//           <motion.div
+//             aria-hidden="true"
+//             className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-cyan-300/70 to-transparent"
+//             animate={{ x: ["-100%", "100%"] }}
+//             transition={{ duration: 3.8, repeat: Infinity, ease: "linear" }}
+//           />
+
+//           <div className="relative">
+//             <div className="mb-6 flex items-center justify-between">
+//               <div>
+//                 <p className="text-sm text-slate-400">Édition active</p>
+//                 <h3 className="text-2xl font-black text-white">
+//                   {config?.editionName || "YouDev 2026"}
+//                 </h3>
+//               </div>
+
+//               <Badge className="rounded-full bg-emerald-400/15 text-emerald-200">
+//                 {refreshing ? (
+//                   <>
+//                     <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+//                     Sync
+//                   </>
+//                 ) : config?.isFrozen ? (
+//                   "Gelé"
+//                 ) : config?.isVotingOpen ? (
+//                   "Votes ouverts"
+//                 ) : (
+//                   "Votes fermés"
+//                 )}
+//               </Badge>
+//             </div>
+
+//             <div className="grid gap-4 sm:grid-cols-2">
+//               <KpiCard
+//                 icon={<Users />}
+//                 value={String(totalProjects)}
+//                 label="Projets publiés"
+//               />
+//               <KpiCard
+//                 icon={<Vote />}
+//                 value={String(totalVotes)}
+//                 label="Votes enregistrés"
+//               />
+//               <KpiCard
+//                 icon={<Trophy />}
+//                 value={String(config?.qualifiedCount || 10)}
+//                 label="Places en finale"
+//               />
+//               <KpiCard
+//                 icon={<Crown />}
+//                 value="Live"
+//                 label="Phase actuelle"
+//               />
+//             </div>
+//           </div>
+//         </motion.div>
+//       </div>
+//     </section>
+//   )
+// }
+
 function HeroSection({
   config,
   totalProjects,
@@ -596,6 +780,17 @@ function HeroSection({
   remainingVotesState: RemainingVotesState | null
   refreshing: boolean
 }) {
+  function goToProjects() {
+    document.getElementById("projects")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    })
+  }
+
+  function goToLeaderboard() {
+    window.location.href = "/leaderboard"
+  }
+
   return (
     <section className="relative pt-10">
       <div className="absolute right-0 top-0 -z-10 h-72 w-72 rounded-full bg-blue-500/20 blur-3xl" />
@@ -609,7 +804,7 @@ function HeroSection({
         >
           <Badge className="mb-5 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-4 py-2 text-cyan-200">
             <Sparkles className="mr-2 h-4 w-4" />
-            Qualification en ligne — Classement live
+            Qualification en ligne — votes publics
           </Badge>
 
           <h1 className="hero-glow text-6xl font-black tracking-tight md:text-8xl">
@@ -622,12 +817,16 @@ function HeroSection({
 
           <p className="mt-4 max-w-2xl text-base leading-8 text-slate-400">
             Découvrez les projets en compétition, votez pour vos favoris et
-            suivez en direct les équipes qualifiées pour la grande finale.
+            suivez le classement public. Les 10 finalistes seront sélectionnés
+            avec plusieurs critères, incluant les votes publics et l’évaluation
+            du jury.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-4">
             <Button
+              type="button"
               size="lg"
+              onClick={goToProjects}
               className="rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 font-bold text-white"
             >
               Découvrir les projets
@@ -635,8 +834,10 @@ function HeroSection({
             </Button>
 
             <Button
+              type="button"
               size="lg"
               variant="outline"
+              onClick={goToLeaderboard}
               className="rounded-2xl border-white/15 bg-white/5 text-white hover:bg-white/10"
             >
               Voir le classement
@@ -701,20 +902,23 @@ function HeroSection({
                 value={String(totalProjects)}
                 label="Projets publiés"
               />
+
               <KpiCard
                 icon={<Vote />}
                 value={String(totalVotes)}
                 label="Votes enregistrés"
               />
+
               <KpiCard
                 icon={<Trophy />}
                 value={String(config?.qualifiedCount || 10)}
-                label="Places en finale"
+                label="Finalistes à sélectionner"
               />
+
               <KpiCard
                 icon={<Crown />}
-                value="Live"
-                label="Phase actuelle"
+                value="Jury"
+                label="Décision finale"
               />
             </div>
           </div>
@@ -829,6 +1033,142 @@ function FeedHeader({
   )
 }
 
+// function ProjectCard({
+//   project,
+//   index,
+//   onVote,
+//   isVoting,
+//   hasVoted,
+//   votingClosed,
+// }: {
+//   project: Project
+//   index: number
+//   onVote: (project: Project) => void
+//   isVoting: boolean
+//   hasVoted: boolean
+//   votingClosed: boolean
+// }) {
+//   const buttonLabel = isVoting
+//     ? "Vote..."
+//     : hasVoted
+//       ? "Déjà voté"
+//       : votingClosed
+//         ? "Fermé"
+//         : "Voter"
+
+//   return (
+//     <motion.div
+//       initial={{ opacity: 0, y: 18 }}
+//       whileInView={{ opacity: 1, y: 0 }}
+//       viewport={{ once: true, margin: "-60px" }}
+//       whileHover={{ y: -6 }}
+//       transition={{ duration: 0.45, delay: index * 0.04 }}
+//     >
+//       <Card className="glass-card group h-full overflow-hidden rounded-3xl border-white/10 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/40">
+//         <div className="relative h-44 overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-violet-950">
+//           {project.thumbnailUrl ? (
+//             <Image
+//                 src={project.thumbnailUrl}
+//                 alt={project.projectName}
+//                 fill
+//                 sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+//                 className="object-cover opacity-90 transition duration-500 group-hover:scale-105"
+//             />
+//           ) : (
+//             <div className="flex h-full items-center justify-center">
+//               <Code2 className="h-14 w-14 text-cyan-200/70" />
+//             </div>
+//           )}
+
+//           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+
+//           <div className="absolute left-4 top-4 flex gap-2">
+//             <Badge className="rounded-full bg-black/50 text-white backdrop-blur-xl">
+//               #{project.rank}
+//             </Badge>
+
+//             {project.isQualified && (
+//               <Badge className="rounded-full bg-cyan-400/20 text-cyan-100 backdrop-blur-xl">
+//                 Top 10
+//               </Badge>
+//             )}
+//           </div>
+
+//           {hasVoted && (
+//             <div className="absolute right-4 top-4 rounded-full bg-emerald-400/20 px-3 py-1 text-xs font-bold text-emerald-100 backdrop-blur-xl">
+//               Voté
+//             </div>
+//           )}
+//         </div>
+
+//         <CardContent className="p-5">
+//           <h3 className="line-clamp-1 text-xl font-black text-white">
+//             {project.projectName}
+//           </h3>
+
+//           <p className="mt-1 text-sm font-medium text-cyan-200">
+//             {project.team.name}
+//           </p>
+
+//           <p className="mt-3 line-clamp-2 min-h-[48px] text-sm leading-6 text-slate-400">
+//             {project.description || "Aucune description disponible."}
+//           </p>
+
+//           <div className="mt-4 flex flex-wrap gap-2">
+//             {project.technologies.slice(0, 3).map((tech) => (
+//               <Badge
+//                 key={tech.id}
+//                 variant="outline"
+//                 className="rounded-full border-white/10 bg-white/5 text-slate-300"
+//               >
+//                 {tech.name}
+//               </Badge>
+//             ))}
+//           </div>
+
+//           <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-4">
+//             <div className="flex items-center gap-4 text-sm text-slate-300">
+//               <span className="flex items-center gap-1">
+//                 <Star className="h-4 w-4 text-cyan-300" />
+//                 {project.voteCount}
+//               </span>
+
+//               <span className="flex items-center gap-1">
+//                 <Eye className="h-4 w-4 text-violet-300" />
+//                 {project.viewCount}
+//               </span>
+//             </div>
+
+//             <Button
+//               size="sm"
+//               disabled={isVoting || hasVoted || votingClosed}
+//               onClick={() => onVote(project)}
+//               className={`rounded-xl font-bold transition-all duration-300 ${
+//                 hasVoted
+//                   ? "bg-emerald-400/20 text-emerald-200 hover:bg-emerald-400/20"
+//                   : votingClosed
+//                     ? "bg-slate-700 text-slate-300"
+//                     : "bg-cyan-400 text-slate-950 hover:bg-cyan-300 hover:shadow-[0_0_28px_rgba(34,211,238,0.35)]"
+//               } disabled:cursor-not-allowed disabled:opacity-80`}
+//             >
+//               {isVoting ? (
+//                 <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+//               ) : hasVoted ? (
+//                 <CheckCircle2 className="mr-1 h-4 w-4" />
+//               ) : votingClosed ? (
+//                 <Lock className="mr-1 h-4 w-4" />
+//               ) : (
+//                 <Star className="mr-1 h-4 w-4" />
+//               )}
+//               {buttonLabel}
+//             </Button>
+//           </div>
+//         </CardContent>
+//       </Card>
+//     </motion.div>
+//   )
+// }
+
 function ProjectCard({
   project,
   index,
@@ -852,6 +1192,10 @@ function ProjectCard({
         ? "Fermé"
         : "Voter"
 
+  function goToProject() {
+    window.location.href = `/projects/${project.slug}`
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 18 }}
@@ -860,15 +1204,18 @@ function ProjectCard({
       whileHover={{ y: -6 }}
       transition={{ duration: 0.45, delay: index * 0.04 }}
     >
-      <Card className="glass-card group h-full overflow-hidden rounded-3xl border-white/10 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/40">
+      <Card
+        onClick={goToProject}
+        className="glass-card group h-full cursor-pointer overflow-hidden rounded-3xl border-white/10 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/40"
+      >
         <div className="relative h-44 overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-violet-950">
           {project.thumbnailUrl ? (
             <Image
-                src={project.thumbnailUrl}
-                alt={project.projectName}
-                fill
-                sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
-                className="object-cover opacity-90 transition duration-500 group-hover:scale-105"
+              src={project.thumbnailUrl}
+              alt={project.projectName}
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+              className="object-cover opacity-90 transition duration-500 group-hover:scale-105"
             />
           ) : (
             <div className="flex h-full items-center justify-center">
@@ -883,11 +1230,9 @@ function ProjectCard({
               #{project.rank}
             </Badge>
 
-            {project.isQualified && (
-              <Badge className="rounded-full bg-cyan-400/20 text-cyan-100 backdrop-blur-xl">
-                Top 10
-              </Badge>
-            )}
+            <Badge className="rounded-full bg-cyan-400/20 text-cyan-100 backdrop-blur-xl">
+              En compétition
+            </Badge>
           </div>
 
           {hasVoted && (
@@ -936,9 +1281,13 @@ function ProjectCard({
             </div>
 
             <Button
+              type="button"
               size="sm"
               disabled={isVoting || hasVoted || votingClosed}
-              onClick={() => onVote(project)}
+              onClick={(event) => {
+                event.stopPropagation()
+                onVote(project)
+              }}
               className={`rounded-xl font-bold transition-all duration-300 ${
                 hasVoted
                   ? "bg-emerald-400/20 text-emerald-200 hover:bg-emerald-400/20"
@@ -965,6 +1314,93 @@ function ProjectCard({
   )
 }
 
+// function LeaderboardPanel({
+//   loading,
+//   leaderboard,
+// }: {
+//   loading: boolean
+//   leaderboard: LeaderboardItem[]
+// }) {
+//   return (
+//     <aside
+//       id="leaderboard"
+//       className="glass-card neon-border sticky top-24 h-fit rounded-[2rem] p-5"
+//     >
+//       <div className="mb-5 flex items-center justify-between">
+//         <div>
+//           <h2 className="text-2xl font-black text-white">Classement Live</h2>
+//           <p className="text-sm text-slate-400">Top 10 qualifiés</p>
+//         </div>
+
+//         <Badge className="rounded-full bg-red-500/15 text-red-200">
+//           <Zap className="mr-1 h-3 w-3" />
+//           En direct
+//         </Badge>
+//       </div>
+
+//       {loading ? (
+//         <div className="space-y-3">
+//           {[1, 2, 3, 4, 5].map((item) => (
+//             <div
+//               key={item}
+//               className="h-16 animate-pulse rounded-2xl bg-white/5"
+//             />
+//           ))}
+//         </div>
+//       ) : leaderboard.length === 0 ? (
+//         <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400">
+//           Aucun projet classé pour le moment.
+//         </div>
+//       ) : (
+//         <div className="space-y-3">
+//           {leaderboard.slice(0, 10).map((item) => (
+//             <motion.div
+//               key={item.id}
+//               layout
+//               className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3"
+//             >
+//               <div
+//                 className={`flex h-10 w-10 items-center justify-center rounded-xl text-sm font-black ${
+//                   item.rank === 1
+//                     ? "bg-yellow-400/15 text-yellow-200"
+//                     : item.rank === 2
+//                       ? "bg-slate-300/15 text-slate-200"
+//                       : item.rank === 3
+//                         ? "bg-orange-400/15 text-orange-200"
+//                         : "bg-cyan-400/10 text-cyan-200"
+//                 }`}
+//               >
+//                 #{item.rank}
+//               </div>
+
+//               <div className="min-w-0 flex-1">
+//                 <div className="truncate font-bold text-white">
+//                   {item.team.name}
+//                 </div>
+//                 <div className="truncate text-xs text-slate-500">
+//                   {item.projectName}
+//                 </div>
+//               </div>
+
+//               <div className="text-right">
+//                 <div className="font-black text-white">{item.voteCount}</div>
+//                 <div className="text-xs text-slate-500">votes</div>
+//               </div>
+//             </motion.div>
+//           ))}
+//         </div>
+//       )}
+
+//       <Button
+//         variant="outline"
+//         className="mt-5 w-full rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10"
+//       >
+//         Voir le classement complet
+//       </Button>
+//     </aside>
+//   )
+// }
+
 function LeaderboardPanel({
   loading,
   leaderboard,
@@ -972,6 +1408,14 @@ function LeaderboardPanel({
   loading: boolean
   leaderboard: LeaderboardItem[]
 }) {
+  function goToLeaderboard() {
+    window.location.href = "/leaderboard"
+  }
+
+  function goToProject(slug: string) {
+    window.location.href = `/projects/${slug}`
+  }
+
   return (
     <aside
       id="leaderboard"
@@ -980,7 +1424,9 @@ function LeaderboardPanel({
       <div className="mb-5 flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-black text-white">Classement Live</h2>
-          <p className="text-sm text-slate-400">Top 10 qualifiés</p>
+          <p className="text-sm text-slate-400">
+            Classement public des votes — décision finale par jury.
+          </p>
         </div>
 
         <Badge className="rounded-full bg-red-500/15 text-red-200">
@@ -1005,10 +1451,12 @@ function LeaderboardPanel({
       ) : (
         <div className="space-y-3">
           {leaderboard.slice(0, 10).map((item) => (
-            <motion.div
+            <motion.button
               key={item.id}
+              type="button"
               layout
-              className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3"
+              onClick={() => goToProject(item.slug)}
+              className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-left transition hover:border-cyan-300/35 hover:bg-cyan-400/10"
             >
               <div
                 className={`flex h-10 w-10 items-center justify-center rounded-xl text-sm font-black ${
@@ -1037,13 +1485,15 @@ function LeaderboardPanel({
                 <div className="font-black text-white">{item.voteCount}</div>
                 <div className="text-xs text-slate-500">votes</div>
               </div>
-            </motion.div>
+            </motion.button>
           ))}
         </div>
       )}
 
       <Button
+        type="button"
         variant="outline"
+        onClick={goToLeaderboard}
         className="mt-5 w-full rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10"
       >
         Voir le classement complet

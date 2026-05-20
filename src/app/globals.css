@@ -784,3 +784,17 @@ body {
 .light .to-violet-500\/10 {
   --tw-gradient-to: rgba(124, 58, 237, 0.14) var(--tw-gradient-to-position) !important;
 }
+
+@keyframes youdev-loading {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  50% {
+    transform: translateX(60%);
+  }
+
+  100% {
+    transform: translateX(210%);
+  }
+}

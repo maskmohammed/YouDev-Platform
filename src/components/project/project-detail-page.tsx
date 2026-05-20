@@ -25,7 +25,7 @@ import {
   XCircle,
   Zap,
 } from "lucide-react"
-
+import LoginRequiredModal from "@/components/public/login-required-modal"
 import RealtimeUpdateToast from "@/components/realtime/realtime-update-toast"
 import { useLeaderboardRealtime } from "@/hooks/use-leaderboard-realtime"
 
@@ -131,6 +131,7 @@ export default function ProjectDetailPage({ slug }: { slug: string }) {
   const [remainingVotesState, setRemainingVotesState] =
     useState<RemainingVotesState | null>(null)
 
+  const [loginRequiredOpen, setLoginRequiredOpen] = useState(false)
   const [voteModalOpen, setVoteModalOpen] = useState(false)
   const [isVoting, setIsVoting] = useState(false)
   const [voteFeedback, setVoteFeedback] = useState<VoteFeedback>({
@@ -297,35 +298,101 @@ useLeaderboardRealtime({
     }
   }
 
-  async function getOrCreateUserToken() {
-    if (userToken) return userToken
+  // async function getOrCreateUserToken() {
+  //   if (userToken) return userToken
 
-    const response = await fetch("/api/auth/dev-login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        username: "frontend_detail_user",
-        name: "Frontend Detail User",
-      }),
-    })
+  //   const response = await fetch("/api/auth/dev-login", {
+  //     method: "POST",
+  //     headers: {
+  //       "Content-Type": "application/json",
+  //     },
+  //     body: JSON.stringify({
+  //       username: "frontend_detail_user",
+  //       name: "Frontend Detail User",
+  //     }),
+  //   })
 
-    const json = await response.json()
+  //   const json = await response.json()
 
-    if (!json.success) {
-      throw new Error(json.message || "Connexion utilisateur impossible.")
+  //   if (!json.success) {
+  //     throw new Error(json.message || "Connexion utilisateur impossible.")
+  //   }
+
+  //   const token = json.data.token
+
+  //   localStorage.setItem("youdev_user_token", token)
+  //   setUserToken(token)
+
+  //   await loadUserVotes(token)
+
+  //   return token
+  // }
+
+  async function getUserTokenOrThrow() {
+    if (userToken) {
+      return userToken
     }
 
-    const token = json.data.token
+    const savedToken = localStorage.getItem("youdev_user_token")
 
-    localStorage.setItem("youdev_user_token", token)
-    setUserToken(token)
+    if (savedToken) {
+      setUserToken(savedToken)
+      await loadUserVotes(savedToken)
+      return savedToken
+    }
 
-    await loadUserVotes(token)
-
-    return token
+    throw new Error("LOGIN_REQUIRED")
   }
+
+  // function openVoteModal() {
+  //   setVoteFeedback({
+  //     type: "",
+  //     message: "",
+  //   })
+
+  //   const savedToken = localStorage.getItem("youdev_user_token")
+
+  //   if (!userToken && !savedToken) {
+  //     setVoteFeedback({
+  //       type: "error",
+  //       message: "Connectez-vous avec Instagram pour voter.",
+  //     })
+
+  //     const returnTo = encodeURIComponent(window.location.pathname)
+  //     window.location.href = `/api/auth/instagram/start?returnTo=${returnTo}`
+  //     return
+  //   }
+
+  //   if (!project) return
+
+  //   if (!config?.isVotingOpen || config?.isFrozen) {
+  //     setVoteFeedback({
+  //       type: "error",
+  //       message: config?.isFrozen
+  //         ? "Le classement est gelé. Aucun vote n’est possible."
+  //         : "Les votes sont actuellement fermés.",
+  //     })
+  //     return
+  //   }
+
+  //   if (hasVoted) {
+  //     setVoteFeedback({
+  //       type: "error",
+  //       message: "Vous avez déjà voté pour ce projet.",
+  //     })
+  //     return
+  //   }
+
+  //   if (remainingVotesState && remainingVotesState.remainingVotes <= 0) {
+  //     setVoteFeedback({
+  //       type: "error",
+  //       message: "Vous avez utilisé tous vos votes.",
+  //     })
+  //     return
+  //   }
+
+  //   setVoteModalOpen(true)
+  // }
 
   function openVoteModal() {
     setVoteFeedback({
@@ -342,6 +409,14 @@ useLeaderboardRealtime({
           ? "Le classement est gelé. Aucun vote n’est possible."
           : "Les votes sont actuellement fermés.",
       })
+      return
+    }
+
+    const savedToken = localStorage.getItem("youdev_user_token")
+
+    if (!userToken && !savedToken) {
+      setVoteModalOpen(false)
+      setLoginRequiredOpen(true)
       return
     }
 
@@ -390,7 +465,7 @@ useLeaderboardRealtime({
         throw new Error("Vous avez déjà voté pour ce projet.")
       }
 
-      const token = await getOrCreateUserToken()
+      const token = await getUserTokenOrThrow()
 
       const response = await fetch("/api/votes/confirm", {
         method: "POST",
@@ -441,6 +516,17 @@ useLeaderboardRealtime({
       await loadProject({ silent: true, recordView: false })
       await loadUserVotes(token)
     } catch (err) {
+      if (err instanceof Error && err.message === "LOGIN_REQUIRED") {
+        setVoteModalOpen(false)
+        setVoteFeedback({
+          type: "error",
+          message: "Connectez-vous avec Instagram pour voter.",
+        })
+
+        const returnTo = encodeURIComponent(window.location.pathname)
+        window.location.href = `/api/auth/instagram/start?returnTo=${returnTo}`
+        return
+      }
       setVoteFeedback({
         type: "error",
         message:
@@ -581,6 +667,12 @@ useLeaderboardRealtime({
           if (!isVoting) setVoteModalOpen(false)
         }}
         onConfirm={confirmVote}
+      />
+
+      <LoginRequiredModal
+        open={loginRequiredOpen}
+        onClose={() => setLoginRequiredOpen(false)}
+        returnTo={project ? `/projects/${project.slug}` : "/"}
       />
     </main>
   )
