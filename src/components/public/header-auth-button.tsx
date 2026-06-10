@@ -207,18 +207,13 @@ const AUTH_CHANGED_EVENT = "youdev-auth-changed"
 
 function InstagramIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="none">
-      <rect
-        x="3.5"
-        y="3.5"
-        width="17"
-        height="17"
-        rx="5"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" />
-      <circle cx="17.3" cy="6.7" r="1.2" fill="currentColor" />
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className={className}
+      fill="currentColor"
+    >
+      <path d="M14.2 8.1V6.7c0-.7.5-.9.9-.9h2.3V2.1L14.2 2c-3.5 0-4.7 2.1-4.7 4.5v1.6H7v3.9h2.5v10h4.2V12h3.1l.5-3.9h-3.1Z" />
     </svg>
   )
 }
@@ -294,7 +289,7 @@ export default function HeaderAuthButton() {
       `${window.location.pathname}${window.location.search}`,
     )
 
-    window.location.href = `/api/auth/instagram/start?returnTo=${returnTo}`
+    window.location.href = `/api/auth/facebook/start?returnTo=${returnTo}`
   }
 
   async function logout() {

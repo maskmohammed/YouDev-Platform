@@ -37,7 +37,7 @@ export default function LoginRequiredModal({
 
   function loginWithInstagram() {
     const encodedReturnTo = encodeURIComponent(returnTo)
-    window.location.href = `/api/auth/instagram/start?returnTo=${encodedReturnTo}`
+    window.location.href = `/api/auth/facebook/start?returnTo=${encodedReturnTo}`
   }
 
   return (
@@ -113,7 +113,7 @@ export default function LoginRequiredModal({
                 <InstagramIcon className="h-3.5 w-3.5 text-white" />
               </span>
 
-              <span className="relative">Connexion Instagram</span>
+              <span className="relative">Connexion Facebook</span>
             </button>
 
             <button

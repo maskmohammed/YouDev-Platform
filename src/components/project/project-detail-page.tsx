@@ -524,7 +524,7 @@ useLeaderboardRealtime({
         })
 
         const returnTo = encodeURIComponent(window.location.pathname)
-        window.location.href = `/api/auth/instagram/start?returnTo=${returnTo}`
+        window.location.href = `/api/auth/facebook/start?returnTo=${returnTo}`
         return
       }
       setVoteFeedback({
