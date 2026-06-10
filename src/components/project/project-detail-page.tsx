@@ -520,11 +520,11 @@ useLeaderboardRealtime({
         setVoteModalOpen(false)
         setVoteFeedback({
           type: "error",
-          message: "Connectez-vous avec Instagram pour voter.",
+          message: "Connectez-vous avec Google pour voter.",
         })
 
         const returnTo = encodeURIComponent(window.location.pathname)
-        window.location.href = `/api/auth/facebook/start?returnTo=${returnTo}`
+        window.location.href = `/api/auth/google/start?returnTo=${returnTo}`
         return
       }
       setVoteFeedback({
