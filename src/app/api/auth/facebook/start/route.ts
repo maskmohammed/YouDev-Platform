@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   try {
     const clientId = getRequiredEnv("FACEBOOK_CLIENT_ID")
     const redirectUri = getRequiredEnv("FACEBOOK_REDIRECT_URI")
-    const scope = process.env.FACEBOOK_OAUTH_SCOPE || "public_profile,email"
+    const scope = process.env.FACEBOOK_OAUTH_SCOPE || "public_profile"
 
     const url = new URL(request.url)
     const returnTo = url.searchParams.get("returnTo") || "/"
