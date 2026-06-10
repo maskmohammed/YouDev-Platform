@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { getBearerToken } from "@/lib/auth-token"
+import { getBearerToken, hashToken } from "@/lib/auth-token"
 import { getCurrentUser } from "@/lib/user-auth"
 import { successResponse, errorResponse } from "@/lib/response"
 import { ERROR_CODES } from "@/lib/errors"
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 
   await prisma.session.updateMany({
     where: {
-      tokenHash: token,
+      tokenHash: hashToken(token),
       type: "USER",
       revokedAt: null,
     },

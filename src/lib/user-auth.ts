@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { verifyToken } from "@/lib/jwt"
-import { getBearerToken } from "@/lib/auth-token"
+import { getBearerToken, hashToken } from "@/lib/auth-token"
 
 export async function getCurrentUser(request: Request) {
   const token = getBearerToken(request)
@@ -18,7 +18,7 @@ export async function getCurrentUser(request: Request) {
 
     const session = await prisma.session.findFirst({
       where: {
-        tokenHash: token,
+        tokenHash: hashToken(token),
         type: "USER",
         revokedAt: null,
         expiresAt: {

@@ -1,3 +1,5 @@
+import crypto from "crypto"
+
 export function getBearerToken(request: Request) {
   const authHeader = request.headers.get("authorization")
 
@@ -6,4 +8,8 @@ export function getBearerToken(request: Request) {
   }
 
   return authHeader.replace("Bearer ", "")
+}
+
+export function hashToken(token: string) {
+  return crypto.createHash("sha256").update(token).digest("hex")
 }
